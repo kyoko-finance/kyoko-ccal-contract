@@ -1,0 +1,749 @@
+{
+  "manifestVersion": "3.2",
+  "admin": {
+    "address": "0xCc606bCB781EbBe6f12b576c537554A5BAF2db78",
+    "txHash": "0xeea5584f65127b427693630068fc41cbed745bc9ab97ce4e93f141d3254836d1"
+  },
+  "proxies": [
+    {
+      "address": "0xcCA2F0A67434E42f54C257bee98e0aA4341745A5",
+      "txHash": "0x9174ecf04690882756af67aa38569c5885cc530997685222a39e68bf7b08d393",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x2E0E881cC21cAe70cC32d4D16b0EE2dDD182bfA9",
+      "txHash": "0x48af0b9b9d310a0ec4c6095d72072921a185102ad169ceb1fbf54a9588430290",
+      "kind": "transparent"
+    }
+  ],
+  "impls": {
+    "2cf60f4c541a3221fdc13452ecbd5465f4e3d59ca6429855e69a7c3d24e36c3f": {
+      "address": "0xf0b9518F499f79FF957Ab09582ce2E6744c4869F",
+      "txHash": "0x4af2f80be2aa07648f7ca3bb93956dc24b3874bde4228163a87bc2a9ad1cad75",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "../@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "../@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "../@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "ERC165Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "../@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol:36"
+          },
+          {
+            "contract": "AccessControlUpgradeable",
+            "label": "_roles",
+            "type": "t_mapping(t_bytes32,t_struct(RoleData)3143_storage)",
+            "src": "../@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol:64"
+          },
+          {
+            "contract": "AccessControlUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "../@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol:232"
+          },
+          {
+            "contract": "AccessControlEnumerableUpgradeable",
+            "label": "_roleMembers",
+            "type": "t_mapping(t_bytes32,t_struct(AddressSet)6641_storage)",
+            "src": "../@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgradeable.sol:26"
+          },
+          {
+            "contract": "AccessControlEnumerableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "../@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgradeable.sol:74"
+          },
+          {
+            "contract": "ERC721HolderUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "../@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol:35"
+          },
+          {
+            "contract": "StorageLayer",
+            "label": "nftHolderMap",
+            "type": "t_mapping(t_address,t_struct(UintSet)6798_storage)",
+            "src": "StorageLayer.sol:10"
+          },
+          {
+            "contract": "StorageLayer",
+            "label": "nftBorrowMap",
+            "type": "t_mapping(t_address,t_struct(UintSet)6798_storage)",
+            "src": "StorageLayer.sol:13"
+          },
+          {
+            "contract": "StorageLayer",
+            "label": "pendingWithdrawInterest",
+            "type": "t_mapping(t_address,t_array(t_struct(InterestInfo)2441_storage)dyn_storage)",
+            "src": "StorageLayer.sol:15"
+          },
+          {
+            "contract": "StorageLayer",
+            "label": "freezeMap",
+            "type": "t_mapping(t_bytes_memory_ptr,t_struct(FreezeTokenInfo)2434_storage)",
+            "src": "StorageLayer.sol:17"
+          },
+          {
+            "contract": "StorageLayer",
+            "label": "nftMap",
+            "type": "t_mapping(t_uint256,t_struct(DepositTool)2421_storage)",
+            "src": "StorageLayer.sol:20"
+          },
+          {
+            "contract": "StorageLayer",
+            "label": "creditUsed",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "StorageLayer.sol:22"
+          },
+          {
+            "contract": "ProjectConfig",
+            "label": "creditSystem",
+            "type": "t_contract(ICreditSystem)2388",
+            "src": "ProjectConfig.sol:11"
+          },
+          {
+            "contract": "ProjectConfig",
+            "label": "allowCurrency",
+            "type": "t_address",
+            "src": "ProjectConfig.sol:13"
+          },
+          {
+            "contract": "ProjectConfig",
+            "label": "isMainChain",
+            "type": "t_bool",
+            "src": "ProjectConfig.sol:15"
+          },
+          {
+            "contract": "ProjectConfig",
+            "label": "vault",
+            "type": "t_address",
+            "src": "ProjectConfig.sol:17"
+          },
+          {
+            "contract": "ProjectConfig",
+            "label": "_paused",
+            "type": "t_bool",
+            "src": "ProjectConfig.sol:19"
+          },
+          {
+            "contract": "ProjectConfig",
+            "label": "fee",
+            "type": "t_uint256",
+            "src": "ProjectConfig.sol:21"
+          },
+          {
+            "contract": "BaseContract",
+            "label": "_internalId",
+            "type": "t_struct(Counter)6000_storage",
+            "src": "BaseContract.sol:23"
+          }
+        ],
+        "types": {
+          "t_struct(Counter)6000_storage": {
+            "label": "struct CountersUpgradeable.Counter",
+            "members": [
+              {
+                "label": "_value",
+                "type": "t_uint256"
+              }
+            ]
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_contract(ICreditSystem)2388": {
+            "label": "contract ICreditSystem"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_mapping(t_address,t_struct(UintSet)6798_storage)": {
+            "label": "mapping(address => struct EnumerableSetUpgradeable.UintSet)"
+          },
+          "t_struct(UintSet)6798_storage": {
+            "label": "struct EnumerableSetUpgradeable.UintSet",
+            "members": [
+              {
+                "label": "_inner",
+                "type": "t_struct(Set)6340_storage"
+              }
+            ]
+          },
+          "t_struct(Set)6340_storage": {
+            "label": "struct EnumerableSetUpgradeable.Set",
+            "members": [
+              {
+                "label": "_values",
+                "type": "t_array(t_bytes32)dyn_storage"
+              },
+              {
+                "label": "_indexes",
+                "type": "t_mapping(t_bytes32,t_uint256)"
+              }
+            ]
+          },
+          "t_array(t_bytes32)dyn_storage": {
+            "label": "bytes32[]"
+          },
+          "t_bytes32": {
+            "label": "bytes32"
+          },
+          "t_mapping(t_bytes32,t_uint256)": {
+            "label": "mapping(bytes32 => uint256)"
+          },
+          "t_mapping(t_address,t_array(t_struct(InterestInfo)2441_storage)dyn_storage)": {
+            "label": "mapping(address => struct InterestInfo[])"
+          },
+          "t_array(t_struct(InterestInfo)2441_storage)dyn_storage": {
+            "label": "struct InterestInfo[]"
+          },
+          "t_struct(InterestInfo)2441_storage": {
+            "label": "struct InterestInfo",
+            "members": [
+              {
+                "label": "internalId",
+                "type": "t_uint256"
+              },
+              {
+                "label": "game",
+                "type": "t_address"
+              },
+              {
+                "label": "amount",
+                "type": "t_uint256"
+              }
+            ]
+          },
+          "t_mapping(t_bytes_memory_ptr,t_struct(FreezeTokenInfo)2434_storage)": {
+            "label": "mapping(bytes => struct FreezeTokenInfo)"
+          },
+          "t_bytes_storage": {
+            "label": "bytes"
+          },
+          "t_struct(FreezeTokenInfo)2434_storage": {
+            "label": "struct FreezeTokenInfo",
+            "members": [
+              {
+                "label": "operator",
+                "type": "t_address"
+              },
+              {
+                "label": "internalId",
+                "type": "t_uint256"
+              },
+              {
+                "label": "useCredit",
+                "type": "t_bool"
+              },
+              {
+                "label": "game",
+                "type": "t_address"
+              },
+              {
+                "label": "amount",
+                "type": "t_uint256"
+              },
+              {
+                "label": "interest",
+                "type": "t_uint256"
+              }
+            ]
+          },
+          "t_mapping(t_uint256,t_struct(DepositTool)2421_storage)": {
+            "label": "mapping(uint256 => struct DepositTool)"
+          },
+          "t_struct(DepositTool)2421_storage": {
+            "label": "struct DepositTool",
+            "members": [
+              {
+                "label": "cycle",
+                "type": "t_uint256"
+              },
+              {
+                "label": "minPay",
+                "type": "t_uint256"
+              },
+              {
+                "label": "status",
+                "type": "t_enum(AssetStatus)2394"
+              },
+              {
+                "label": "toolIds",
+                "type": "t_array(t_uint256)dyn_storage"
+              },
+              {
+                "label": "holder",
+                "type": "t_address"
+              },
+              {
+                "label": "borrowTime",
+                "type": "t_uint256"
+              },
+              {
+                "label": "depositTime",
+                "type": "t_uint256"
+              },
+              {
+                "label": "totalAmount",
+                "type": "t_uint256"
+              },
+              {
+                "label": "borrower",
+                "type": "t_address"
+              },
+              {
+                "label": "amountPerDay",
+                "type": "t_uint256"
+              },
+              {
+                "label": "internalId",
+                "type": "t_uint256"
+              },
+              {
+                "label": "game",
+                "type": "t_address"
+              }
+            ]
+          },
+          "t_enum(AssetStatus)2394": {
+            "label": "enum AssetStatus",
+            "members": [
+              "INITIAL",
+              "BORROW",
+              "REPAY",
+              "WITHDRAW",
+              "LIQUIDATE"
+            ]
+          },
+          "t_array(t_uint256)dyn_storage": {
+            "label": "uint256[]"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          },
+          "t_mapping(t_bytes32,t_struct(AddressSet)6641_storage)": {
+            "label": "mapping(bytes32 => struct EnumerableSetUpgradeable.AddressSet)"
+          },
+          "t_struct(AddressSet)6641_storage": {
+            "label": "struct EnumerableSetUpgradeable.AddressSet",
+            "members": [
+              {
+                "label": "_inner",
+                "type": "t_struct(Set)6340_storage"
+              }
+            ]
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_mapping(t_bytes32,t_struct(RoleData)3143_storage)": {
+            "label": "mapping(bytes32 => struct AccessControlUpgradeable.RoleData)"
+          },
+          "t_struct(RoleData)3143_storage": {
+            "label": "struct AccessControlUpgradeable.RoleData",
+            "members": [
+              {
+                "label": "members",
+                "type": "t_mapping(t_address,t_bool)"
+              },
+              {
+                "label": "adminRole",
+                "type": "t_bytes32"
+              }
+            ]
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)"
+          }
+        }
+      }
+    },
+    "6abaf64b520ffe6e89e8680eed7d0aa3daae2680763977926e42000eff2919a8": {
+      "address": "0xab99255442CD0bBe92eE09ae5717245d25d24Cd3",
+      "txHash": "0x69f93ef23126d021663914a406c3b378347181b3fb4b076471b00b0b32905fb2",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "../@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "../@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "../@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "ERC165Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "../@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol:36"
+          },
+          {
+            "contract": "AccessControlUpgradeable",
+            "label": "_roles",
+            "type": "t_mapping(t_bytes32,t_struct(RoleData)3143_storage)",
+            "src": "../@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol:64"
+          },
+          {
+            "contract": "AccessControlUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "../@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol:232"
+          },
+          {
+            "contract": "AccessControlEnumerableUpgradeable",
+            "label": "_roleMembers",
+            "type": "t_mapping(t_bytes32,t_struct(AddressSet)6641_storage)",
+            "src": "../@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgradeable.sol:26"
+          },
+          {
+            "contract": "AccessControlEnumerableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "../@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgradeable.sol:74"
+          },
+          {
+            "contract": "ERC721HolderUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "../@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol:35"
+          },
+          {
+            "contract": "StorageLayer",
+            "label": "nftHolderMap",
+            "type": "t_mapping(t_address,t_struct(UintSet)6798_storage)",
+            "src": "StorageLayer.sol:10"
+          },
+          {
+            "contract": "StorageLayer",
+            "label": "nftBorrowMap",
+            "type": "t_mapping(t_address,t_struct(UintSet)6798_storage)",
+            "src": "StorageLayer.sol:13"
+          },
+          {
+            "contract": "StorageLayer",
+            "label": "pendingWithdrawInterest",
+            "type": "t_mapping(t_address,t_array(t_struct(InterestInfo)2441_storage)dyn_storage)",
+            "src": "StorageLayer.sol:15"
+          },
+          {
+            "contract": "StorageLayer",
+            "label": "freezeMap",
+            "type": "t_mapping(t_bytes_memory_ptr,t_struct(FreezeTokenInfo)2434_storage)",
+            "src": "StorageLayer.sol:17"
+          },
+          {
+            "contract": "StorageLayer",
+            "label": "nftMap",
+            "type": "t_mapping(t_uint256,t_struct(DepositTool)2421_storage)",
+            "src": "StorageLayer.sol:20"
+          },
+          {
+            "contract": "StorageLayer",
+            "label": "creditUsed",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "StorageLayer.sol:22"
+          },
+          {
+            "contract": "ProjectConfig",
+            "label": "creditSystem",
+            "type": "t_contract(ICreditSystem)2388",
+            "src": "ProjectConfig.sol:11"
+          },
+          {
+            "contract": "ProjectConfig",
+            "label": "allowCurrency",
+            "type": "t_address",
+            "src": "ProjectConfig.sol:13"
+          },
+          {
+            "contract": "ProjectConfig",
+            "label": "isMainChain",
+            "type": "t_bool",
+            "src": "ProjectConfig.sol:15"
+          },
+          {
+            "contract": "ProjectConfig",
+            "label": "vault",
+            "type": "t_address",
+            "src": "ProjectConfig.sol:17"
+          },
+          {
+            "contract": "ProjectConfig",
+            "label": "_paused",
+            "type": "t_bool",
+            "src": "ProjectConfig.sol:19"
+          },
+          {
+            "contract": "ProjectConfig",
+            "label": "fee",
+            "type": "t_uint256",
+            "src": "ProjectConfig.sol:21"
+          },
+          {
+            "contract": "BaseContract",
+            "label": "_internalId",
+            "type": "t_struct(Counter)6000_storage",
+            "src": "BaseContract.sol:23"
+          }
+        ],
+        "types": {
+          "t_struct(Counter)6000_storage": {
+            "label": "struct CountersUpgradeable.Counter",
+            "members": [
+              {
+                "label": "_value",
+                "type": "t_uint256"
+              }
+            ]
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_contract(ICreditSystem)2388": {
+            "label": "contract ICreditSystem"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_mapping(t_address,t_struct(UintSet)6798_storage)": {
+            "label": "mapping(address => struct EnumerableSetUpgradeable.UintSet)"
+          },
+          "t_struct(UintSet)6798_storage": {
+            "label": "struct EnumerableSetUpgradeable.UintSet",
+            "members": [
+              {
+                "label": "_inner",
+                "type": "t_struct(Set)6340_storage"
+              }
+            ]
+          },
+          "t_struct(Set)6340_storage": {
+            "label": "struct EnumerableSetUpgradeable.Set",
+            "members": [
+              {
+                "label": "_values",
+                "type": "t_array(t_bytes32)dyn_storage"
+              },
+              {
+                "label": "_indexes",
+                "type": "t_mapping(t_bytes32,t_uint256)"
+              }
+            ]
+          },
+          "t_array(t_bytes32)dyn_storage": {
+            "label": "bytes32[]"
+          },
+          "t_bytes32": {
+            "label": "bytes32"
+          },
+          "t_mapping(t_bytes32,t_uint256)": {
+            "label": "mapping(bytes32 => uint256)"
+          },
+          "t_mapping(t_address,t_array(t_struct(InterestInfo)2441_storage)dyn_storage)": {
+            "label": "mapping(address => struct InterestInfo[])"
+          },
+          "t_array(t_struct(InterestInfo)2441_storage)dyn_storage": {
+            "label": "struct InterestInfo[]"
+          },
+          "t_struct(InterestInfo)2441_storage": {
+            "label": "struct InterestInfo",
+            "members": [
+              {
+                "label": "internalId",
+                "type": "t_uint256"
+              },
+              {
+                "label": "game",
+                "type": "t_address"
+              },
+              {
+                "label": "amount",
+                "type": "t_uint256"
+              }
+            ]
+          },
+          "t_mapping(t_bytes_memory_ptr,t_struct(FreezeTokenInfo)2434_storage)": {
+            "label": "mapping(bytes => struct FreezeTokenInfo)"
+          },
+          "t_bytes_storage": {
+            "label": "bytes"
+          },
+          "t_struct(FreezeTokenInfo)2434_storage": {
+            "label": "struct FreezeTokenInfo",
+            "members": [
+              {
+                "label": "operator",
+                "type": "t_address"
+              },
+              {
+                "label": "internalId",
+                "type": "t_uint256"
+              },
+              {
+                "label": "useCredit",
+                "type": "t_bool"
+              },
+              {
+                "label": "game",
+                "type": "t_address"
+              },
+              {
+                "label": "amount",
+                "type": "t_uint256"
+              },
+              {
+                "label": "interest",
+                "type": "t_uint256"
+              }
+            ]
+          },
+          "t_mapping(t_uint256,t_struct(DepositTool)2421_storage)": {
+            "label": "mapping(uint256 => struct DepositTool)"
+          },
+          "t_struct(DepositTool)2421_storage": {
+            "label": "struct DepositTool",
+            "members": [
+              {
+                "label": "cycle",
+                "type": "t_uint256"
+              },
+              {
+                "label": "minPay",
+                "type": "t_uint256"
+              },
+              {
+                "label": "status",
+                "type": "t_enum(AssetStatus)2394"
+              },
+              {
+                "label": "toolIds",
+                "type": "t_array(t_uint256)dyn_storage"
+              },
+              {
+                "label": "holder",
+                "type": "t_address"
+              },
+              {
+                "label": "borrowTime",
+                "type": "t_uint256"
+              },
+              {
+                "label": "depositTime",
+                "type": "t_uint256"
+              },
+              {
+                "label": "totalAmount",
+                "type": "t_uint256"
+              },
+              {
+                "label": "borrower",
+                "type": "t_address"
+              },
+              {
+                "label": "amountPerDay",
+                "type": "t_uint256"
+              },
+              {
+                "label": "internalId",
+                "type": "t_uint256"
+              },
+              {
+                "label": "game",
+                "type": "t_address"
+              }
+            ]
+          },
+          "t_enum(AssetStatus)2394": {
+            "label": "enum AssetStatus",
+            "members": [
+              "INITIAL",
+              "BORROW",
+              "REPAY",
+              "WITHDRAW",
+              "LIQUIDATE"
+            ]
+          },
+          "t_array(t_uint256)dyn_storage": {
+            "label": "uint256[]"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          },
+          "t_mapping(t_bytes32,t_struct(AddressSet)6641_storage)": {
+            "label": "mapping(bytes32 => struct EnumerableSetUpgradeable.AddressSet)"
+          },
+          "t_struct(AddressSet)6641_storage": {
+            "label": "struct EnumerableSetUpgradeable.AddressSet",
+            "members": [
+              {
+                "label": "_inner",
+                "type": "t_struct(Set)6340_storage"
+              }
+            ]
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_mapping(t_bytes32,t_struct(RoleData)3143_storage)": {
+            "label": "mapping(bytes32 => struct AccessControlUpgradeable.RoleData)"
+          },
+          "t_struct(RoleData)3143_storage": {
+            "label": "struct AccessControlUpgradeable.RoleData",
+            "members": [
+              {
+                "label": "members",
+                "type": "t_mapping(t_address,t_bool)"
+              },
+              {
+                "label": "adminRole",
+                "type": "t_bytes32"
+              }
+            ]
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)"
+          }
+        }
+      }
+    }
+  }
+}

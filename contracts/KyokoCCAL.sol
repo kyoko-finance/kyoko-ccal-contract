@@ -14,8 +14,8 @@ import "./interface.sol";
 contract KyokoCCAL is BaseContract {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
 
-    function initialize(ICreditSystem _creditSystem, bool _isMainChain, address _vault) public override initializer {
-        BaseContract.initialize(_creditSystem, _isMainChain, _vault);
+    function initialize(ICreditSystem _creditSystem, bool _isMainChain, address _vault, uint _fee) public override initializer {
+        BaseContract.initialize(_creditSystem, _isMainChain, _vault, _fee);
     }
 
     event DepositAsset(

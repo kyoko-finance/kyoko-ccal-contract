@@ -54,7 +54,7 @@ module.exports = {
             network_id: "*", // Any network (default: none)
         },
         rinkeby: {
-            provider: () => new HDWalletProvider(mnemonic, `https://rinkeby.infura.io/v3/` + infuraKey),
+            provider: () => new HDWalletProvider(mnemonic, `https://rinkeby.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161`),
             network_id: 4,
             networkCheckTimeout: 1000000,
             confirmations: 2,    // # of confs to wait between deployments. (default: 0)
@@ -62,7 +62,7 @@ module.exports = {
             skipDryRun: true,     // Skip dry run before migrations? (default: false for public nets )
         },
         kovan: {
-            provider: () => new HDWalletProvider(mnemonic, `https://kovan.infura.io/v3/` + infuraKey),
+            provider: () => new HDWalletProvider(mnemonic, `https://kovan.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161`),
             network_id: 42,
             networkCheckTimeout: 1000000,
             confirmations: 2,    // # of confs to wait between deployments. (default: 0)

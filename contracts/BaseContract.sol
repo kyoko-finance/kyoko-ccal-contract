@@ -22,7 +22,8 @@ contract BaseContract is AccessControlEnumerableUpgradeable, ERC721HolderUpgrade
 
     CountersUpgradeable.Counter private _internalId;
 
-    function initialize(ICreditSystem _creditSystem, bool _isMainChain, address _vault) public virtual initializer {
+    function initialize(ICreditSystem _creditSystem, bool _isMainChain, address _vault, uint _fee) public virtual initializer {
+        fee = _fee;
         vault = _vault;
         isMainChain  = _isMainChain;
         creditSystem = _creditSystem;

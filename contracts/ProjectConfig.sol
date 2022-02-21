@@ -18,6 +18,6 @@ contract ProjectConfig {
 
     bool internal _paused;
 
-    uint public fee = 5;
+    uint public fee;
 
 }
