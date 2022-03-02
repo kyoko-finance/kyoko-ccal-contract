@@ -3,7 +3,7 @@ pragma solidity >= 0.8.0;
 
 
 interface ICreditSystem {
-    function getCreditLine(address user) external returns(uint);
+    function getCCALCreditLine(address user) external returns(uint);
     function getState(address user) external returns(bool, bool);
 }
 

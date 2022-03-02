@@ -186,7 +186,7 @@ contract KyokoCCAL is BaseContract {
         uint internalId,
         uint interest
     );
-    function repayAsset(address game, address holder, uint internalId) public whenNotPaused {
+    function repayAsset(address game, address holder, uint internalId) public {
 
         ValidateLogic.checkRepayAssetPara(game, _msgSender(), internalId, nftMap);
 
@@ -399,7 +399,7 @@ contract KyokoCCAL is BaseContract {
         address holder,
         uint internalId,
         uint interest
-    ) public whenNotPaused onlyBot {
+    ) public onlyBot {
         pendingWithdrawInterest[holder].push(
             InterestInfo({
                 internalId: internalId,

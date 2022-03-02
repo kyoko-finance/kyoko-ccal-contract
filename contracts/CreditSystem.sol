@@ -6,7 +6,7 @@ import "./interface.sol";
 /** ⚠️this contract is for test. ignore plz */
 
 contract CreditSystem is ICreditSystem {
-    function getCreditLine(address user) public override returns(uint) {
+    function getCCALCreditLine(address user) public override returns(uint) {
         return type(uint).max;
     }
 

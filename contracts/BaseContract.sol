@@ -146,7 +146,7 @@ contract BaseContract is AccessControlEnumerableUpgradeable, ERC721HolderUpgrade
     }
 
     function getUserCreditTotalAmount(address user) internal returns(uint) {
-        return ICreditSystem(creditSystem).getCreditLine(user);
+        return ICreditSystem(creditSystem).getCCALCreditLine(user);
     }
 
     function increaseCreditUsed(
