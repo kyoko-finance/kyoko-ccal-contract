@@ -25,10 +25,14 @@
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
 
 const fs = require('fs');
+const Web3 = require('web3')
 const HDWalletProvider = require('@truffle/hdwallet-provider');
 const infuraKey = fs.readFileSync(".infuraKey").toString().trim();
 const mnemonic = fs.readFileSync(".mnemonic").toString().trim();
-const etherscanApiKey = '';
+const alchemyKeyDev = fs.readFileSync(".alchemyKeyDev").toString().trim();
+const etherscanApiKey = fs.readFileSync(".etherscanApi").toString().trim();
+const polygonscanApiKey = fs.readFileSync(".polygonscanApi").toString().trim();
+const bscscanApiKey = fs.readFileSync(".bscscanApi").toString().trim();
 
 module.exports = {
     /**
@@ -68,7 +72,48 @@ module.exports = {
             confirmations: 2,    // # of confs to wait between deployments. (default: 0)
             timeoutBlocks: 20000,  // # of blocks before a deployment times out  (minimum/default: 50)
             skipDryRun: true,     // Skip dry run before migrations? (default: false for public nets )
-        }
+        },
+        // bsc testnet
+        bscTestnet: {
+            provider: () => new HDWalletProvider(mnemonic, `https://data-seed-prebsc-1-s1.binance.org:8545/`),
+            network_id: 97,
+            confirmations: 10,
+            timeoutBlocks: 200,
+            skipDryRun: true,
+            networkCheckTimeout: 10000000,
+        },
+        // bsc
+        bsc: {
+            provider: () => new HDWalletProvider(mnemonic, `https://bsc-dataseed.binance.org/`),
+            network_id: 56,
+            confirmations: 10,
+            timeoutBlocks: 200,
+            skipDryRun: true
+        },
+        // ploygon Mumbai
+        polygonTestnet: {
+            provider: () => new HDWalletProvider(mnemonic, `https://polygon-mumbai.g.alchemy.com/v2/` + alchemyKeyDev),
+            network_id: 80001,
+            confirmations: 2,
+            timeoutBlocks: 200,
+            skipDryRun: true,
+            networkCheckTimeout: 10000000,
+        },
+        // ploygon mainnet
+        polygonMainnet: {
+            provider: () => new HDWalletProvider(mnemonic, `https://polygon-mainnet.g.alchemy.com/v2/` + alchemyKeyDev),
+            network_id: 137,
+            confirmations: 10,
+            timeoutBlocks: 200,
+            skipDryRun: true,
+            gasPrice: 33000000000
+        },
+        mainnet: {
+            provider: () => new HDWalletProvider(mnemonic, `https://mainnet.infura.io/v3/` + infuraKey),
+            network_id: 1,
+            gasPrice: Web3.utils.toWei('150', 'gwei'),
+            gas: 9999972
+        },
         // Another network with more advanced options...
         // advanced: {
         // port: 8777,             // Custom port
@@ -121,6 +166,8 @@ module.exports = {
         'truffle-plugin-verify'
     ],
     api_keys: {
-        etherscan: etherscanApiKey
+        etherscan: etherscanApiKey,
+        polygonscan: polygonscanApiKey,
+        bscscan: bscscanApiKey
     }
 };
