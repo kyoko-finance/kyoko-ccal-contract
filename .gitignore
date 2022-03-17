@@ -34,3 +34,4 @@ yarn.lock
 deploy-*.json
 
 **/.openzeppelin
+**/web3
