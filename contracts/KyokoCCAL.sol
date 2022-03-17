@@ -424,7 +424,7 @@ contract KyokoCCAL is BaseContract {
         uint internalId
     ) internal {
         DepositTool storage asset = nftMap[internalId];
-        EnumerableSetUpgradeable.UintSet storage borrowIds = nftBorrowMap[asset.borrower];
+        EnumerableSetUpgradeable.UintSet storage borrowIds = nftBorrowMap[borrower];
 
         asset.borrower = borrower;
         asset.status = AssetStatus.BORROW;
