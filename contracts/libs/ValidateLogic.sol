@@ -114,6 +114,9 @@ library ValidateLogic {
         FreezeTokenInfo memory freezeInfo = freezeMap[getFreezeKey(game, internalId)];
         DepositTool memory asset = nftMap[internalId];
 
+        if (asset.status != AssetStatus.INITIAL) {
+            return false;
+        }
         if (freezeInfo.operator != address(0)) {
             return false;
         }
@@ -141,6 +144,10 @@ library ValidateLogic {
         mapping(uint => DepositTool) storage nftMap
     ) external view returns(bool) {
         DepositTool memory asset = nftMap[internalId];
+
+        if (asset.status != AssetStatus.INITIAL) {
+            return false;
+        }
 
         if (amount < asset.totalAmount) {
             return false;

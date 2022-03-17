@@ -9,7 +9,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
 import { ValidateLogic } from "./libs/ValidateLogic.sol";
 import "./BaseContract.sol";
-import "./interface.sol";
 
 contract KyokoCCAL is BaseContract {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
@@ -235,7 +234,7 @@ contract KyokoCCAL is BaseContract {
             FreezeTokenInfo storage freezeToken = freezeMap[key];
 
             if (freezeToken.useCredit) {
-                decreaseCreditUsed(_msgSender(), freezeToken.amount - interest);
+                decreaseCreditUsed(freezeToken.operator, freezeToken.amount - interest);
                 delete freezeMap[key];
             } else {
                 freezeToken.game = address(0);
@@ -411,7 +410,7 @@ contract KyokoCCAL is BaseContract {
         bytes memory key = getFreezeKey(game, internalId);
         FreezeTokenInfo storage freezeToken = freezeMap[key];
         if (freezeToken.useCredit) {
-            decreaseCreditUsed(_msgSender(), freezeToken.amount - interest);
+            decreaseCreditUsed(freezeToken.operator, freezeToken.amount - interest);
             delete freezeMap[key];
         } else {
             freezeToken.game = address(0);
