@@ -20,4 +20,6 @@ contract StorageLayer {
     mapping(uint => DepositTool) public nftMap;
 
     mapping(address => uint) public creditUsed;
+
+    mapping(address => FreezeTokenInfo[]) public pendingWithdrawFreezeToken;
 }
