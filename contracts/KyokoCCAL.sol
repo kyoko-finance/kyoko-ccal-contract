@@ -129,7 +129,7 @@ contract KyokoCCAL is BaseContract {
         require(
             !isWithdraw && !isLiquidate &&
             _msgSender() == asset.holder,
-            "bad parameters"
+            "bad req"
         );
 
         // if tool isn't borrow or borrowed and repay, depositor can withdraw
@@ -230,15 +230,25 @@ contract KyokoCCAL is BaseContract {
                 })
             );
 
-            bytes memory key = getFreezeKey(game, internalId);
-            FreezeTokenInfo storage freezeToken = freezeMap[key];
+            FreezeTokenInfo memory freezeInfo = freezeMap[getFreezeKey(game, internalId)];
 
-            if (freezeToken.useCredit) {
-                decreaseCreditUsed(freezeToken.operator, freezeToken.amount - interest);
-                delete freezeMap[key];
+            if (freezeInfo.useCredit) {
+                decreaseCreditUsed(freezeInfo.operator, freezeInfo.amount - interest);
+                delete freezeMap[getFreezeKey(game, internalId)];
             } else {
-                freezeToken.game = address(0);
-                freezeToken.interest = interest;
+                if (freezeInfo.amount > interest) {
+                    pendingWithdrawFreezeToken[borrower].push(
+                        FreezeTokenInfo({
+                            amount: freezeInfo.amount - interest,
+                            internalId: freezeInfo.internalId,
+                            operator: freezeInfo.operator,
+                            game: freezeInfo.game,
+                            useCredit: false,
+                            interest: 0
+                        })
+                    );
+                }
+                delete freezeMap[getFreezeKey(game, internalId)];
             }
         }
 
@@ -249,11 +259,11 @@ contract KyokoCCAL is BaseContract {
         address game,
         uint internalId
     ) public whenNotPaused {
-        require(isMainChain, "only allow operate on main chain");
+        require(isMainChain, "only main chain");
 
         (bool canWithdraw, uint index) = ValidateLogic.checkWithdrawToolInterest(game, _msgSender(), internalId, pendingWithdrawInterest);
 
-        require(canWithdraw, "can't withdraw interest");
+        require(canWithdraw, "can't withdraw");
 
         InterestInfo[] storage infos = pendingWithdrawInterest[_msgSender()];
 
@@ -285,7 +295,7 @@ contract KyokoCCAL is BaseContract {
         uint cycle,
         bool useCredit
     ) public whenNotPaused {
-        require(isMainChain, "only freeze on main chain");
+        require(isMainChain, "only main chain");
 
         address caller = msg.sender;
         bytes memory key = getFreezeKey(game, internalId);
@@ -301,7 +311,7 @@ contract KyokoCCAL is BaseContract {
             nftMap
         );
 
-        require(canBorrow, "can not borrow this asset now");
+        require(canBorrow, "can't borrow now");
 
         DepositTool memory asset = nftMap[internalId];
 
@@ -342,9 +352,9 @@ contract KyokoCCAL is BaseContract {
         uint amount,
         bool useCredit
     ) public whenNotPaused {
-        require(isMainChain, "only freeze on main chain");
+        require(isMainChain, "only main chain");
         bool canBorrow = ValidateLogic.checkFreezeForOtherChainPara(game, internalId, freezeMap);
-        require(canBorrow, "can't borrow asset now");
+        require(canBorrow, "can't borrow now");
 
         address caller = msg.sender;
         bytes memory key = getFreezeKey(game, internalId);
@@ -357,7 +367,7 @@ contract KyokoCCAL is BaseContract {
                 require(totalCreditAmount - getUsed(caller) >= amount, "not enough");
                 increaseCreditUsed(caller, amount);
             } else {
-                revert("can not use credit borrow");
+                revert("can't use credit");
             }
         }
 
@@ -407,14 +417,24 @@ contract KyokoCCAL is BaseContract {
             })
         );
 
-        bytes memory key = getFreezeKey(game, internalId);
-        FreezeTokenInfo storage freezeToken = freezeMap[key];
-        if (freezeToken.useCredit) {
-            decreaseCreditUsed(freezeToken.operator, freezeToken.amount - interest);
-            delete freezeMap[key];
+        FreezeTokenInfo memory freezeInfo = freezeMap[getFreezeKey(game, internalId)];
+        if (freezeInfo.useCredit) {
+            decreaseCreditUsed(freezeInfo.operator, freezeInfo.amount - interest);
+            delete freezeMap[getFreezeKey(game, internalId)];
         } else {
-            freezeToken.game = address(0);
-            freezeToken.interest = interest;
+            if (freezeInfo.amount > interest) {
+                pendingWithdrawFreezeToken[freezeInfo.operator].push(
+                    FreezeTokenInfo({
+                        amount: freezeInfo.amount - interest,
+                        internalId: freezeInfo.internalId,
+                        operator: freezeInfo.operator,
+                        game: freezeInfo.game,
+                        useCredit: false,
+                        interest: 0
+                    })
+                );
+            }
+            delete freezeMap[getFreezeKey(game, internalId)];
         }
     }
 
@@ -458,7 +478,7 @@ contract KyokoCCAL is BaseContract {
             nftMap
         );
 
-        require(canBorrow, "can not borrow this asset right now");
+        require(canBorrow, "can't borrow now");
 
         _sendAssetToBorrower(game, borrower, internalId);
 
@@ -470,18 +490,27 @@ contract KyokoCCAL is BaseContract {
         address user,
         uint internalId
     ) public whenNotPaused onlyBot {
-        bytes memory key = getFreezeKey(game, internalId);
+        (bool canWithdraw, uint index) = ValidateLogic.checkWithdrawFreezeTokenPara(
+            game,
+            user,
+            internalId,
+            pendingWithdrawFreezeToken
+        );
+        require(canWithdraw, "bad req");
 
-        FreezeTokenInfo memory freezeToken = freezeMap[key];
+        FreezeTokenInfo[] storage list = pendingWithdrawFreezeToken[user];
+        
+        FreezeTokenInfo memory info = list[index];
 
-        delete freezeMap[key];
+        list[index] = list[list.length - 1];
+        list.pop();
 
-        SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(allowCurrency), user, freezeToken.amount - freezeToken.interest);
+        SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(allowCurrency), user, info.amount);
     }
 
     function repayCredit(uint amount) public whenNotPaused {
-        require(amount > 0, "bad amount parameters");
-        require(creditUsed[_msgSender()] > 0 , "no credit debt to repay");
+        require(amount > 0, "bad amount");
+        require(creditUsed[_msgSender()] > 0 , "bad req");
         SafeERC20Upgradeable.safeTransferFrom(IERC20Upgradeable(allowCurrency), _msgSender(), vault, amount);
         decreaseCreditUsed(_msgSender(), amount);
     }
@@ -489,7 +518,7 @@ contract KyokoCCAL is BaseContract {
     event WithDraw(address recipient, uint256 amount);
     function withdraw(uint256 amount) public onlyManager {
         uint balance = IERC20Upgradeable(allowCurrency).balanceOf(address(this));
-        require(amount <= balance, "no enough balance");
+        require(amount <= balance, "bad amount");
         SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(allowCurrency), payable(vault), amount);
 
         emit WithDraw(vault, amount);
@@ -563,15 +592,13 @@ contract KyokoCCAL is BaseContract {
         address user,
         uint internalId
     ) public view returns(bool) {
-        bytes memory key = getFreezeKey(game, internalId);
-
-        FreezeTokenInfo memory freezeToken = freezeMap[key];
-
-        return (
-            freezeToken.game == address(0) &&
-            freezeToken.operator == user &&
-            !freezeToken.useCredit
+        (bool canWithdraw, uint _idx) = ValidateLogic.checkWithdrawFreezeTokenPara(
+            game,
+            user,
+            internalId,
+            pendingWithdrawFreezeToken
         );
+        return canWithdraw;
     }
 
     function releaseTokenEmergency(
@@ -581,7 +608,7 @@ contract KyokoCCAL is BaseContract {
     ) public onlyManager {
         bytes memory key = getFreezeKey(game, internalId);
 
-        require(freezeMap[key].amount > 0, "no token needs release");
+        require(freezeMap[key].amount > 0, "bad req");
 
         SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(allowCurrency), user, freezeMap[key].amount);
 

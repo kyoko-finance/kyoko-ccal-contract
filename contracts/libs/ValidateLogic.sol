@@ -180,4 +180,28 @@ library ValidateLogic {
         }
         return true;
     }
+
+    function checkWithdrawFreezeTokenPara(
+        address game,
+        address user,
+        uint internalId,
+        mapping(address => FreezeTokenInfo[]) storage pendingWithdrawFreezeToken
+    ) external view returns(bool, uint) {
+        FreezeTokenInfo[] memory list = pendingWithdrawFreezeToken[user];
+        uint index;
+        for (uint i; i < list.length; i++) {
+            if (
+                list[i].game == game &&
+                list[i].operator == user &&
+                list[i].internalId == internalId
+            ) {
+                index = i;
+                break;
+            }
+        }
+        if (list[index].operator != user) {
+            return (false, 0);
+        }
+        return (true, index);
+    }
 }
