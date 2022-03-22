@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol"
 import "../interface.sol";
 
 library ValidateLogic {
-    function checkIsERC721Asset(address asset) internal view returns(bool result) {
+    function checkIsERC721Asset(address asset) public view returns(bool result) {
         result = IERC721Upgradeable(asset).supportsInterface(0x80ac58cd);
     }
 
@@ -148,14 +148,14 @@ library ValidateLogic {
         if (asset.status != AssetStatus.INITIAL) {
             return false;
         }
-
+        // if user freeze less than required token, return false
         if (amount < asset.totalAmount) {
             return false;
         }
         if (asset.internalId != internalId) {
             return false;
         }
-        // prevent depositor change data before borrower freeze token
+        // prevent depositor change data when borrower freeze token
         if (
             asset.amountPerDay != amountPerDay ||
             asset.totalAmount != totalAmount ||
@@ -179,5 +179,27 @@ library ValidateLogic {
             return false;
         }
         return true;
+    }
+
+    function checkWithdrawFreezeTokenPara(
+        address user,
+        uint internalId,
+        mapping(address => FreezeTokenInfo[]) storage pendingWithdrawFreezeToken
+    ) external view returns(bool, uint) {
+        FreezeTokenInfo[] memory list = pendingWithdrawFreezeToken[user];
+        if (list.length < 1) {
+            return (false, 0);
+        }
+        uint index;
+        for (uint i; i < list.length; i++) {
+            if (list[i].operator == user && list[i].internalId == internalId) {
+                index = i;
+                break;
+            }
+        }
+        if (list[index].operator != user) {
+            return (false, 0);
+        }
+        return (true, index);
     }
 }

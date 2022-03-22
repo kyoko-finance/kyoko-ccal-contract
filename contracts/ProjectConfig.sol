@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >= 0.8.0;
 
+import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
+
 import "./interface.sol";
 
 contract ProjectConfig {
@@ -10,8 +12,6 @@ contract ProjectConfig {
 
     ICreditSystem internal creditSystem;
 
-    address public allowCurrency;
-
     bool public isMainChain;
 
     address public vault;
@@ -20,4 +20,12 @@ contract ProjectConfig {
 
     uint public fee;
 
+    EnumerableSetUpgradeable.AddressSet internal normal_tokens;
+
+    EnumerableSetUpgradeable.AddressSet internal stable_tokens;
+
+    // max subsidy token one-time
+    uint public max_discount;
+
+    uint public discount_percent;
 }

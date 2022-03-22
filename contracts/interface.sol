@@ -22,6 +22,7 @@ struct DepositTool {
     uint amountPerDay;
     uint internalId;
     address game;
+    address token;
 }
 
 struct FreezeTokenInfo {
@@ -31,10 +32,12 @@ struct FreezeTokenInfo {
     address game;
     uint amount;
     uint interest;
+    address token;
 }
 
 struct InterestInfo {
     uint internalId;
     address game;
     uint amount;
+    address token;
 }
