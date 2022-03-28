@@ -263,6 +263,7 @@ contract KyokoCCAL is BaseContract {
         emit RepayAsset(game, holder, borrower, internalId, interest);
     }
 
+    event WithdrawToolInterest(address indexed game, uint indexed internalId);
     function withdrawToolInterest(
         address game,
         uint internalId
@@ -282,6 +283,8 @@ contract KyokoCCAL is BaseContract {
 
         SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(info.token), _msgSender(), (100 - fee) * info.amount / 100);
         SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(info.token), vault, fee * info.amount / 100);
+
+        emit WithdrawToolInterest(game, internalId);
     }
 
     event BorrowAsset(address indexed game, address indexed borrower, uint indexed internalId);
