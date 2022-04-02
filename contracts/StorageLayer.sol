@@ -12,6 +12,8 @@ contract StorageLayer {
     // borrower => internalId[]
     mapping(address => EnumerableSetUpgradeable.UintSet) internal nftBorrowMap;
 
+    mapping(address => FreezeTokenInfo[]) public pendingWithdrawFreezeToken;
+
     mapping(address => InterestInfo[]) public pendingWithdrawInterest;
 
     mapping(bytes => FreezeTokenInfo) public freezeMap;
@@ -19,7 +21,6 @@ contract StorageLayer {
     // internalId => DepositTool
     mapping(uint => DepositTool) public nftMap;
 
+    // uint is wei
     mapping(address => uint) public creditUsed;
-
-    mapping(address => FreezeTokenInfo[]) public pendingWithdrawFreezeToken;
 }

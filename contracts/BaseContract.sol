@@ -21,21 +21,30 @@ import "./interface.sol";
 contract BaseContract
     is AccessControlEnumerableUpgradeable,
     ERC721HolderUpgradeable,
+    OwnableUpgradeable,
     StorageLayer,
     ProjectConfig
 {
-    using SafeMathUpgradeable for uint256;
+    using SafeMathUpgradeable for uint;
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
     CountersUpgradeable.Counter private _internalId;
 
-    function initialize(ICreditSystem _creditSystem, bool _isMainChain, address _vault, uint _fee) public virtual initializer {
+    function initialize(
+        ICreditSystem _creditSystem,
+        bool _isMainChain,
+        address _vault,
+        uint _fee,
+        uint _chainId
+    ) public virtual initializer {
         fee = _fee;
         vault = _vault;
+        chainId = _chainId;
         isMainChain  = _isMainChain;
         creditSystem = _creditSystem;
 
+        __Ownable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
 
@@ -65,6 +74,14 @@ contract BaseContract
         _;
     }
 
+    modifier onlyAuditor() {
+        require(
+            hasRole(AUDITOR_ROLE, _msgSender()),
+            "only auditor"
+        );
+        _;
+    }
+
     event NFTReceived(
         address indexed operator,
         address indexed from,
@@ -89,48 +106,55 @@ contract BaseContract
         return _paused;
     }
 
-    function setCreditSystem(ICreditSystem _creditSystem) public onlyManager {
+    function setCreditSystem(ICreditSystem _creditSystem) external onlyOwner {
         creditSystem = _creditSystem;
     }
 
-    function setFee(uint _fee) public onlyManager {
-        require(fee < 100, "too large");
+    function setFee(uint _fee) external onlyOwner {
+        require(fee <= 1000, "too large");
         fee = _fee;
     }
 
-    function setVault(address _vault) public onlyManager {
+    function setVault(address _vault) external onlyOwner {
+        require(_vault != address(0), "bad vault");
         vault = _vault;
     }
 
-    function addNormalTokens(address _token) public onlyManager {
+    function addNormalTokens(address _token, uint _decimals) external onlyOwner {
         normal_tokens.add(_token);
+        tokenInfo[_token].active = true;
+        tokenInfo[_token].decimals = _decimals;
     }
 
-    function removeNormalTokens(address _token) public onlyManager {
+    function removeNormalTokens(address _token) external onlyOwner {
         normal_tokens.remove(_token);
+        delete tokenInfo[_token];
     }
 
-    function setStableTokens(address _stableToken) public onlyManager {
+    function setStableTokens(address _stableToken, uint _decimals) external onlyOwner {
         stable_tokens.add(_stableToken);
+        tokenInfo[_stableToken].active = true;
+        tokenInfo[_stableToken].decimals = _decimals;
     }
 
-    function removeStableTokens(address _stableToken) public onlyManager {
+    function removeStableTokens(address _stableToken) external onlyOwner {
         stable_tokens.remove(_stableToken);
+        delete tokenInfo[_stableToken];
     }
 
-    function setMaxDiscount(uint _discount) public onlyManager {
+    function setMaxDiscount(uint _discount) external onlyOwner {
         max_discount = _discount;
     }
 
-    function setDiscountPercent(uint _discountPercent) public onlyManager {
+    function setDiscountPercent(uint _discountPercent) external onlyOwner {
         discount_percent = _discountPercent;
     }
 
-    function pause() public onlyManager {
+    function pause() external onlyOwner {
         _paused = true;
     }
 
-    function unpause() public  onlyManager whenPaused {
+    function unpause() external  onlyOwner whenPaused {
         _paused = false;
     }
 
@@ -171,27 +195,34 @@ contract BaseContract
 
     function increaseCreditUsed(
         address _user,
+        address _token,
         uint _amount
     ) internal {
-        creditUsed[_user] = creditUsed[_user].add(_amount);
+        uint amountInWei = _amount.mul(uint(1 ether)).div(10**tokenInfo[_token].decimals);
+        creditUsed[_user] = creditUsed[_user].add(amountInWei);
     }
 
     function decreaseCreditUsed(
         address _user,
+        address _token,
         uint _amount
     ) internal {
-        creditUsed[_user] = creditUsed[_user].sub(_amount);
+        uint amountInWei = _amount.mul(uint(1 ether)).div(10**tokenInfo[_token].decimals);
+        creditUsed[_user] = creditUsed[_user].sub(amountInWei);
     }
 
-    function getUsed(address _user)
-        internal
-        view
-        returns(uint result)
-    {
-        result = creditUsed[_user];
+    function checkUserCanUseCredit(address _user, address _token, uint _amount) internal returns(bool) {
+        if (!checkUserIsInCreditSystem(_user)) {
+            return false;
+        }
+        uint amountInWei = _amount.mul(uint(1 ether)).div(10**tokenInfo[_token].decimals);
+        if (amountInWei.add(creditUsed[_user]) > getUserCreditTotalAmount(_user)) {
+            return false;
+        }
+        return true;
     }
 
-    function checkToken(address _token) internal view returns(bool) {
+    function checkTokenInList(address _token) internal view returns(bool) {
         return normal_tokens.contains(_token) || stable_tokens.contains(_token);
     }
 }

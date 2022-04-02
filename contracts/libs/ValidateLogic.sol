@@ -6,17 +6,16 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol"
 import "../interface.sol";
 
 library ValidateLogic {
-    function checkIsERC721Asset(address asset) public view returns(bool result) {
-        result = IERC721Upgradeable(asset).supportsInterface(0x80ac58cd);
-    }
 
     function getFreezeKey(
         address game,
-        uint internalId
+        uint internalId,
+        uint _chainId
     ) public pure returns(bytes memory) {
         return bytes.concat(
             abi.encodePacked(game),
-            abi.encodePacked(internalId)
+            abi.encodePacked(internalId),
+            abi.encodePacked(_chainId)
         );
     }
 
@@ -29,8 +28,8 @@ library ValidateLogic {
         uint cycle
     ) external view {
         require(
-            checkIsERC721Asset(game) &&
-            (cycle > 0 && cycle < 365 days) &&
+            IERC721Upgradeable(game).supportsInterface(0x80ac58cd) &&
+            (cycle > 0 && cycle <= 365 days) &&
             toolIds.length > 0 &&
             amountPerDay > 0 &&
             totalAmount > 0 &&
@@ -50,7 +49,7 @@ library ValidateLogic {
         mapping(uint => DepositTool) storage nftMap
     ) external view {
         require(
-            (cycle > 0 && cycle < 365 days) &&
+            (cycle > 0 && cycle <= 365 days) &&
             amountPerDay > 0 &&
             totalAmount > 0 &&
             minPay > 0,
@@ -108,10 +107,11 @@ library ValidateLogic {
         uint totalAmount,
         uint minPay,
         uint cycle,
+        uint _chainId,
         mapping(bytes => FreezeTokenInfo) storage freezeMap,
         mapping(uint => DepositTool) storage nftMap
     ) external view returns(bool) {
-        FreezeTokenInfo memory freezeInfo = freezeMap[getFreezeKey(game, internalId)];
+        FreezeTokenInfo memory freezeInfo = freezeMap[getFreezeKey(game, internalId, _chainId)];
         DepositTool memory asset = nftMap[internalId];
 
         if (asset.status != AssetStatus.INITIAL) {
@@ -171,9 +171,10 @@ library ValidateLogic {
     function checkFreezeForOtherChainPara(
         address game,
         uint internalId,
+        uint _chainId,
         mapping(bytes => FreezeTokenInfo) storage freezeMap
     ) external view returns(bool) {
-        FreezeTokenInfo memory freezeInfo = freezeMap[getFreezeKey(game, internalId)];
+        FreezeTokenInfo memory freezeInfo = freezeMap[getFreezeKey(game, internalId, _chainId)];
 
         if (freezeInfo.operator != address(0)) {
             return false;
