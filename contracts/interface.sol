@@ -9,6 +9,11 @@ interface ICreditSystem {
 
 enum AssetStatus { INITIAL, BORROW, REPAY, WITHDRAW, LIQUIDATE }
 
+struct TokenInfo {
+    uint decimals;
+    bool active;
+}
+
 struct DepositTool {
     uint cycle;
     uint minPay;
