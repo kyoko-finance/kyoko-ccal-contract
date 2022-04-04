@@ -130,8 +130,7 @@ contract KyokoCCAL is BaseContract {
     event WithdrawAsset(address indexed game, address indexed depositor, uint indexed internalId);
     function withdrawAsset(
         address game,
-        uint internalId,
-        uint _chainId
+        uint internalId
     ) external whenNotPaused {
         DepositTool storage asset = nftMap[internalId];
 
@@ -160,13 +159,13 @@ contract KyokoCCAL is BaseContract {
             emit WithdrawAsset(game, _msgSender(), internalId);
         } else {
             require(isExpired, "not expired");
-            liquidate(game, internalId, _chainId);
+            liquidate(game, internalId);
         }
     }
 
     event Liquidation(address indexed game, address indexed depositor, address indexed borrower, uint internalId, uint amount, address token);
     // trigger liquidate when borrowing relationship is expired and borrower isn't repay tool
-    function liquidate(address game, uint internalId, uint _chainId) internal {
+    function liquidate(address game, uint internalId) internal {
 
         DepositTool storage asset = nftMap[internalId];
         EnumerableSetUpgradeable.UintSet storage holderIds = nftHolderMap[asset.holder];
@@ -186,7 +185,7 @@ contract KyokoCCAL is BaseContract {
                 })
             );
 
-            delete freezeMap[getFreezeKey(game, internalId, _chainId)];
+            delete freezeMap[getFreezeKey(game, internalId, chainId)];
         }
 
         // bot should catch this event adn sync main chain data via clearInfoAfterLiquidateViaBot
@@ -326,7 +325,7 @@ contract KyokoCCAL is BaseContract {
         if (useCredit) {
             require(stable_tokens.contains(token), "bad token");
         } else {
-            require(normal_tokens.contains(token), "bad token");
+            require(checkTokenInList(token), "bad token");
         }
 
         address caller = _msgSender();
@@ -397,7 +396,7 @@ contract KyokoCCAL is BaseContract {
         if (useCredit) {
             require(stable_tokens.contains(token), "bad token");
         } else {
-            require(normal_tokens.contains(token), "bad token");
+            require(checkTokenInList(token), "bad token");
         }
 
         bool canBorrow = ValidateLogic.checkFreezeForOtherChainPara(game, internalId, _chainId, freezeMap);
@@ -672,19 +671,7 @@ contract KyokoCCAL is BaseContract {
         delete freezeMap[key];
     }
 
-    function getUserDepositList(address user) external view returns(uint[] memory) {
-        return nftHolderMap[user].values();
-    }
-
-    function getUserBorrowList(address user) external view returns(uint[] memory) {
-        return nftBorrowMap[user].values();
-    }
-
-    function getStableTokens() external view returns(address[] memory) {
-        return stable_tokens.values();
-    }
-
-    function getNormalTokens() external view returns(address[] memory) {
-        return normal_tokens.values();
+    function getTokens() external view returns(address[] memory, address[] memory) {
+        return (stable_tokens.values(), normal_tokens.values());
     }
 }

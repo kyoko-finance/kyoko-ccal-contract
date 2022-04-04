@@ -58,14 +58,6 @@ contract BaseContract
         _;
     }
 
-    modifier onlyManager() {
-        require(
-            hasRole(MANAGER_ROLE, _msgSender()),
-            "only manager"
-        );
-        _;
-    }
-
     modifier onlyBot() {
         require(
             hasRole(ROBOT_ROLE, _msgSender()),

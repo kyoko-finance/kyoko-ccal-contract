@@ -6,8 +6,6 @@ import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeab
 import "./interface.sol";
 
 contract ProjectConfig {
-    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
-
     bytes32 public constant AUDITOR_ROLE = keccak256("AUDITOR_ROLE");
 
     bytes32 public constant ROBOT_ROLE = keccak256("ROBOT_ROLE");
@@ -35,5 +33,5 @@ contract ProjectConfig {
 
     uint public discount_percent;
 
-    uint chainId;
+    uint public chainId;
 }
