@@ -1,24 +1,21 @@
+/**************************
+  ___  ____  ____  ____   ___   ___  ____    ___    
+|_  ||_  _||_  _||_  _|.'   `.|_  ||_  _| .'   `.  
+  | |_/ /    \ \  / / /  .-.  \ | |_/ /  /  .-.  \ 
+  |  __'.     \ \/ /  | |   | | |  __'.  | |   | | 
+ _| |  \ \_   _|  |_  \  `-'  /_| |  \ \_\  `-'  / 
+|____||____| |______|  `.___.'|____||____|`.___.'  
+
+ **************************/
+
 // SPDX-License-Identifier: MIT
-pragma solidity >= 0.8.0;
+pragma solidity 0.8.7;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 
 import "../interface.sol";
 
 library ValidateLogic {
-
-    function getFreezeKey(
-        address game,
-        uint internalId,
-        uint _chainId
-    ) public pure returns(bytes memory) {
-        return bytes.concat(
-            abi.encodePacked(game),
-            abi.encodePacked(internalId),
-            abi.encodePacked(_chainId)
-        );
-    }
-
     function checkDepositPara(
         address game,
         uint[] memory toolIds,
@@ -26,7 +23,7 @@ library ValidateLogic {
         uint totalAmount,
         uint minPay,
         uint cycle
-    ) external view {
+    ) public view {
         require(
             IERC721Upgradeable(game).supportsInterface(0x80ac58cd) &&
             (cycle > 0 && cycle <= 365 days) &&
@@ -34,96 +31,49 @@ library ValidateLogic {
             amountPerDay > 0 &&
             totalAmount > 0 &&
             minPay > 0,
-            "bad parameters"
+            "bad para"
         );
     }
 
     function checkEditPara(
-        address game,
         address editor,
-        uint internalId,
         uint amountPerDay,
         uint totalAmount,
         uint minPay,
         uint cycle,
-        mapping(uint => DepositTool) storage nftMap
+        uint internalId,
+        mapping(uint => DepositAsset) storage assetMap
     ) external view {
+        DepositAsset memory asset = assetMap[internalId];
         require(
             (cycle > 0 && cycle <= 365 days) &&
             amountPerDay > 0 &&
             totalAmount > 0 &&
             minPay > 0,
-            "bad parameters"
+            "bad para"
         );
-
-        DepositTool memory asset = nftMap[internalId];
 
         require(
             asset.status == AssetStatus.INITIAL &&
-            asset.holder == editor &&
-            asset.game == game,
-            "bad parameters"
+            asset.holder == editor,
+            "bad para"
         );
     }
 
-    function checkWithdrawToolInterest(
-        address game,
-        address depositor,
-        uint internalId,
-        mapping(address => InterestInfo[]) storage pendingWithdrawInterest
-    ) external view returns(bool, uint) {
-        InterestInfo[] memory infos = pendingWithdrawInterest[depositor];
-        uint index;
-        for (uint i; i < infos.length; i++) {
-            if (infos[i].internalId == internalId && infos[i].game == game) {
-                index = i;
-                break;
-            }
-        }
-        return (infos[index].amount > 0 , index);
-    }
-
-    function checkRepayAssetPara(
-        address game,
-        address borrower,
-        uint internalId,
-        mapping(uint => DepositTool) storage nftMap
-    ) external view {
-        DepositTool memory asset = nftMap[internalId];
-
-        require(asset.status == AssetStatus.BORROW, "bad asset status");
-
-        require(
-            asset.borrower == borrower &&
-            asset.game == game,
-            "bad parameters"
-        );
-    }
-
-    function checkFreezePara(
-        address game,
+    function checkBorrowPara(
         uint internalId,
         uint amountPerDay,
         uint totalAmount,
         uint minPay,
         uint cycle,
-        uint _chainId,
-        mapping(bytes => FreezeTokenInfo) storage freezeMap,
-        mapping(uint => DepositTool) storage nftMap
-    ) external view returns(bool) {
-        FreezeTokenInfo memory freezeInfo = freezeMap[getFreezeKey(game, internalId, _chainId)];
-        DepositTool memory asset = nftMap[internalId];
-
-        if (asset.status != AssetStatus.INITIAL) {
-            return false;
-        }
-        if (freezeInfo.operator != address(0)) {
-            return false;
-        }
-        if (asset.depositTime + asset.cycle <= block.timestamp) {
-            return false;
-        }
-        if (asset.internalId != internalId) {
+        mapping(uint => DepositAsset) storage assetMap
+    ) public view returns(bool) {
+        DepositAsset memory asset = assetMap[internalId];
+        if (
+            asset.depositTime + asset.cycle <= block.timestamp ||
+            asset.status != AssetStatus.INITIAL ||
+            asset.internalId != internalId
+        ) {
             return false;
         }
         // prevent depositor change data before borrower freeze token
@@ -133,74 +83,38 @@ library ValidateLogic {
         return true;
     }
 
-    function checkBorrowAssetViaBot(
-        address game,
-        uint internalId,
-        uint amount,
-        uint amountPerDay,
-        uint totalAmount,
-        uint minPay,
-        uint cycle,
-        mapping(uint => DepositTool) storage nftMap
-    ) external view returns(bool) {
-        DepositTool memory asset = nftMap[internalId];
-
-        if (asset.status != AssetStatus.INITIAL) {
-            return false;
-        }
-        // if user freeze less than required token, return false
-        if (amount < asset.totalAmount) {
-            return false;
-        }
-        if (asset.internalId != internalId) {
-            return false;
-        }
-        // prevent depositor change data when borrower freeze token
-        if (
-            asset.amountPerDay != amountPerDay ||
-            asset.totalAmount != totalAmount ||
-            asset.minPay != minPay ||
-            asset.cycle != cycle ||
-            asset.game != game
-        ) {
-            return false;
-        }
-        return true;
-    }
-
-    function checkFreezeForOtherChainPara(
-        address game,
-        uint internalId,
-        uint _chainId,
-        mapping(bytes => FreezeTokenInfo) storage freezeMap
-    ) external view returns(bool) {
-        FreezeTokenInfo memory freezeInfo = freezeMap[getFreezeKey(game, internalId, _chainId)];
-
-        if (freezeInfo.operator != address(0)) {
-            return false;
-        }
-        return true;
-    }
-
-    function checkWithdrawFreezeTokenPara(
+    function checkWithdrawTokenPara(
         address user,
+        uint16 chainId,
         uint internalId,
-        mapping(address => FreezeTokenInfo[]) storage pendingWithdrawFreezeToken
-    ) external view returns(bool, uint) {
-        FreezeTokenInfo[] memory list = pendingWithdrawFreezeToken[user];
+        mapping(address => InterestInfo[]) storage pendingWithdraw
+    ) public view returns(bool, uint) {
+        InterestInfo[] memory list = pendingWithdraw[user];
         if (list.length < 1) {
             return (false, 0);
         }
         uint index;
         for (uint i; i < list.length; i++) {
-            if (list[i].operator == user && list[i].internalId == internalId) {
+            if (
+                list[i].chainId == chainId &&
+                list[i].internalId == internalId 
+            ) {
                 index = i;
                 break;
             }
         }
-        if (list[index].operator != user) {
+        if (list[index].internalId != internalId) {
             return (false, 0);
         }
         return (true, index);
+    }
+
+    function calcCost(uint amountPerDay, uint time, uint min, uint max) external pure returns(uint) {
+        uint cost = time * amountPerDay / 1 days;
+        if (cost <= min) {
+            return min;
+        } else {
+            return cost > max ? max : cost;
+        }
     }
 }

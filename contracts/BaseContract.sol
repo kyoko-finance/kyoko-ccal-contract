@@ -1,29 +1,43 @@
+/**************************
+  ___  ____  ____  ____   ___   ___  ____    ___    
+|_  ||_  _||_  _||_  _|.'   `.|_  ||_  _| .'   `.  
+  | |_/ /    \ \  / / /  .-.  \ | |_/ /  /  .-.  \ 
+  |  __'.     \ \/ /  | |   | | |  __'.  | |   | | 
+ _| |  \ \_   _|  |_  \  `-'  /_| |  \ \_\  `-'  / 
+|____||____| |______|  `.___.'|____||____|`.___.'  
+
+ **************************/
+
 // SPDX-License-Identifier: MIT
-pragma solidity >= 0.8.0;
+pragma solidity 0.8.7;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 
 import { ProjectConfig } from "./ProjectConfig.sol";
-
-import { StorageLayer } from "./StorageLayer.sol";
+import "./LayerZero/ILayerZeroUserApplicationConfig.sol";
+import "./LayerZero/ILayerZeroReceiver.sol";
+import "./LayerZero/ILayerZeroEndpoint.sol";
 
 import "./interface.sol";
 
-contract BaseContract
-    is AccessControlEnumerableUpgradeable,
-    ERC721HolderUpgradeable,
+contract BaseContract is
+    ProjectConfig,
     OwnableUpgradeable,
-    StorageLayer,
-    ProjectConfig
+    PausableUpgradeable,
+    ERC721HolderUpgradeable,
+    AccessControlEnumerableUpgradeable,
+    ILayerZeroReceiver,
+    ILayerZeroUserApplicationConfig
 {
     using SafeMathUpgradeable for uint;
     using CountersUpgradeable for CountersUpgradeable.Counter;
@@ -31,48 +45,7 @@ contract BaseContract
 
     CountersUpgradeable.Counter private _internalId;
 
-    function initialize(
-        ICreditSystem _creditSystem,
-        bool _isMainChain,
-        address _vault,
-        uint _fee,
-        uint _chainId
-    ) public virtual initializer {
-        fee = _fee;
-        vault = _vault;
-        chainId = _chainId;
-        isMainChain  = _isMainChain;
-        creditSystem = _creditSystem;
-
-        __Ownable_init();
-        _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
-    }
-
-    modifier whenNotPaused() {
-        require(!_paused);
-        _;
-    }
-
-    modifier whenPaused() {
-        require(_paused);
-        _;
-    }
-
-    modifier onlyBot() {
-        require(
-            hasRole(ROBOT_ROLE, _msgSender()),
-            "only robot"
-        );
-        _;
-    }
-
-    modifier onlyAuditor() {
-        require(
-            hasRole(AUDITOR_ROLE, _msgSender()),
-            "only auditor"
-        );
-        _;
-    }
+    uint16 public selfChainId;
 
     event NFTReceived(
         address indexed operator,
@@ -94,127 +67,90 @@ contract BaseContract
             );
     }
 
-    function paused() public view returns(bool) {
-        return _paused;
+    function initialize(
+        address _endpoint,
+        uint16 _selfChainId
+    ) public virtual initializer {
+        selfChainId = _selfChainId;
+        layerZeroEndpoint = ILayerZeroEndpoint(_endpoint);
+
+        __Ownable_init();
+        __Pausable_init();
+        __AccessControl_init();
+
+        _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
 
-    function setCreditSystem(ICreditSystem _creditSystem) external onlyOwner {
-        creditSystem = _creditSystem;
+    function getInternalId() internal returns(uint) {
+        _internalId.increment();
+        return _internalId.current();
     }
 
-    function setFee(uint _fee) external onlyOwner {
-        require(fee <= 1000, "too large");
-        fee = _fee;
+    function lzReceive(
+        uint16,
+        bytes memory,
+        uint64, /*_nonce*/
+        bytes memory/*_payload*/
+    ) external virtual override {}
+
+    function setRemote(uint16 _chainId, bytes calldata _remoteAdr) external onlyOwner {
+        remotes[_chainId] = _remoteAdr;
     }
 
-    function setVault(address _vault) external onlyOwner {
-        require(_vault != address(0), "bad vault");
-        vault = _vault;
+    function setConfig(
+        uint16, /*_version*/
+        uint16 _chainId,
+        uint _configType,
+        bytes calldata _config
+    ) external override {
+        layerZeroEndpoint.setConfig(layerZeroEndpoint.getSendVersion(address(this)), _chainId, _configType, _config);
     }
 
-    function addNormalTokens(address _token, uint _decimals) external onlyOwner {
-        normal_tokens.add(_token);
-        tokenInfo[_token].active = true;
-        tokenInfo[_token].decimals = _decimals;
+    function getConfig(
+        uint16, /*_dstChainId*/
+        uint16 _chainId,
+        address,
+        uint _configType
+    ) external view returns (bytes memory) {
+        return layerZeroEndpoint.getConfig(layerZeroEndpoint.getSendVersion(address(this)), _chainId, address(this), _configType);
     }
 
-    function removeNormalTokens(address _token) external onlyOwner {
-        normal_tokens.remove(_token);
-        delete tokenInfo[_token];
+    function setSendVersion(uint16 version) external override {
+        layerZeroEndpoint.setSendVersion(version);
     }
 
-    function setStableTokens(address _stableToken, uint _decimals) external onlyOwner {
-        stable_tokens.add(_stableToken);
-        tokenInfo[_stableToken].active = true;
-        tokenInfo[_stableToken].decimals = _decimals;
+    function setReceiveVersion(uint16 version) external override {
+        layerZeroEndpoint.setReceiveVersion(version);
     }
 
-    function removeStableTokens(address _stableToken) external onlyOwner {
-        stable_tokens.remove(_stableToken);
-        delete tokenInfo[_stableToken];
+    function getSendVersion() external view returns (uint16) {
+        return layerZeroEndpoint.getSendVersion(address(this));
     }
 
-    function setMaxDiscount(uint _discount) external onlyOwner {
-        max_discount = _discount;
+    function getReceiveVersion() external view returns (uint16) {
+        return layerZeroEndpoint.getReceiveVersion(address(this));
     }
 
-    function setDiscountPercent(uint _discountPercent) external onlyOwner {
-        discount_percent = _discountPercent;
+    function forceResumeReceive(uint16 _srcChainId, bytes calldata _srcAddress) external override {
+        layerZeroEndpoint.forceResumeReceive(_srcChainId, _srcAddress);
+    }
+
+    function getFreezeKey(
+        uint _id,
+        uint16 _chainId
+    ) external pure returns(bytes32) {
+        return keccak256(abi.encodePacked(_id, _chainId));
     }
 
     function pause() external onlyOwner {
-        _paused = true;
+        _pause();
     }
 
-    function unpause() external  onlyOwner whenPaused {
-        _paused = false;
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
-    function calcCost(uint amountPerDay, uint time, uint min, uint max) internal pure returns(uint result) {
-        uint cost = time * amountPerDay / 1 days;
-        if (cost <= min) {
-            result = min;
-        } else {
-            result = cost > max ? max : cost;
-        }
-    }
+    fallback() external payable {}
 
-    function getInternalId() internal returns(uint256 num) {
-        _internalId.increment();
-        num = _internalId.current();
-    }
-
-    function getIsBorrowed(AssetStatus status) internal pure returns(bool) {
-        return status == AssetStatus.BORROW;
-    }
-
-    function getIsWithdraw(AssetStatus status) internal pure returns(bool) {
-        return status == AssetStatus.WITHDRAW;
-    }
-
-    function getIsLiquidate(AssetStatus status) internal pure returns(bool) {
-        return status == AssetStatus.LIQUIDATE;
-    }
-
-    function checkUserIsInCreditSystem(address user) internal returns(bool) {
-        (, bool inCCALSystem) = ICreditSystem(creditSystem).getState(user);
-        return inCCALSystem;
-    }
-
-    function getUserCreditTotalAmount(address user) internal returns(uint) {
-        return ICreditSystem(creditSystem).getCCALCreditLine(user);
-    }
-
-    function increaseCreditUsed(
-        address _user,
-        address _token,
-        uint _amount
-    ) internal {
-        uint amountInWei = _amount.mul(uint(1 ether)).div(10**tokenInfo[_token].decimals);
-        creditUsed[_user] = creditUsed[_user].add(amountInWei);
-    }
-
-    function decreaseCreditUsed(
-        address _user,
-        address _token,
-        uint _amount
-    ) internal {
-        uint amountInWei = _amount.mul(uint(1 ether)).div(10**tokenInfo[_token].decimals);
-        creditUsed[_user] = creditUsed[_user].sub(amountInWei);
-    }
-
-    function checkUserCanUseCredit(address _user, address _token, uint _amount) internal returns(bool) {
-        if (!checkUserIsInCreditSystem(_user)) {
-            return false;
-        }
-        uint amountInWei = _amount.mul(uint(1 ether)).div(10**tokenInfo[_token].decimals);
-        if (amountInWei.add(creditUsed[_user]) > getUserCreditTotalAmount(_user)) {
-            return false;
-        }
-        return true;
-    }
-
-    function checkTokenInList(address _token) internal view returns(bool) {
-        return normal_tokens.contains(_token) || stable_tokens.contains(_token);
-    }
+    receive() external payable {}
 }

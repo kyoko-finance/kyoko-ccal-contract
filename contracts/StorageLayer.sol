@@ -1,26 +1,30 @@
-// SPDX-License-Identifier: MIT
-pragma solidity >= 0.8.0;
+/**************************
+  ___  ____  ____  ____   ___   ___  ____    ___    
+|_  ||_  _||_  _||_  _|.'   `.|_  ||_  _| .'   `.  
+  | |_/ /    \ \  / / /  .-.  \ | |_/ /  /  .-.  \ 
+  |  __'.     \ \/ /  | |   | | |  __'.  | |   | | 
+ _| |  \ \_   _|  |_  \  `-'  /_| |  \ \_\  `-'  / 
+|____||____| |______|  `.___.'|____||____|`.___.'  
 
-import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
+ **************************/
+
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.7;
 
 import "./interface.sol";
 
 contract StorageLayer {
-    // depositor => internalId[]
-    mapping(address => EnumerableSetUpgradeable.UintSet) internal nftHolderMap;
+    mapping(address => InterestInfo[]) public pendingWithdraw;
 
-    // borrower => internalId[]
-    mapping(address => EnumerableSetUpgradeable.UintSet) internal nftBorrowMap;
+    mapping(bytes32 => FreezeTokenInfo) public freezeMap;
 
-    mapping(address => FreezeTokenInfo[]) public pendingWithdrawFreezeToken;
-
-    mapping(address => InterestInfo[]) public pendingWithdrawInterest;
-
-    mapping(bytes => FreezeTokenInfo) public freezeMap;
-
-    // internalId => DepositTool
-    mapping(uint => DepositTool) public nftMap;
+    // internalId => DepositAsset
+    mapping(uint => DepositAsset) public nftMap;
 
     // uint is wei
     mapping(address => uint) public creditUsed;
+
+    uint8 public currencyDecimals;
+
+    address public currency;
 }

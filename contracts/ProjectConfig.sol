@@ -1,37 +1,27 @@
+/**************************
+  ___  ____  ____  ____   ___   ___  ____    ___    
+|_  ||_  _||_  _||_  _|.'   `.|_  ||_  _| .'   `.  
+  | |_/ /    \ \  / / /  .-.  \ | |_/ /  /  .-.  \ 
+  |  __'.     \ \/ /  | |   | | |  __'.  | |   | | 
+ _| |  \ \_   _|  |_  \  `-'  /_| |  \ \_\  `-'  / 
+|____||____| |______|  `.___.'|____||____|`.___.'  
+
+ **************************/
+
 // SPDX-License-Identifier: MIT
-pragma solidity >= 0.8.0;
+pragma solidity 0.8.7;
 
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
+import "./LayerZero/ILayerZeroEndpoint.sol";
 import "./interface.sol";
 
 contract ProjectConfig {
-    bytes32 public constant AUDITOR_ROLE = keccak256("AUDITOR_ROLE");
+    uint public constant GAS_FOR_DEST_LZ_RECEIVE = 350000;
 
-    bytes32 public constant ROBOT_ROLE = keccak256("ROBOT_ROLE");
+    ILayerZeroEndpoint public layerZeroEndpoint;
 
-    uint public constant BASE_FEE = 10000;
+    mapping(uint16 => bytes) public remotes;
 
-    ICreditSystem internal creditSystem;
-
-    bool public isMainChain;
-
-    address public vault;
-
-    bool internal _paused;
-
-    uint public fee;
-
-    EnumerableSetUpgradeable.AddressSet internal normal_tokens;
-
-    EnumerableSetUpgradeable.AddressSet internal stable_tokens;
-
-    mapping(address => TokenInfo) internal tokenInfo;
-
-    // max subsidy token one-time
-    uint public max_discount;
-
-    uint public discount_percent;
-
-    uint public chainId;
+    uint16 public constant VERSION = 1;
 }
