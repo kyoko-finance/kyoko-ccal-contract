@@ -9,7 +9,7 @@ module.exports = async function (deployer, network) {
         const credit = await CreditSystem.deployed();
     
         util({ CreditSystem: credit.address }, `deploy-${network}.json`);
-    
+
         console.log('deploy CreditSystem success');
     } catch (e) {
         console.log('e: ', e);

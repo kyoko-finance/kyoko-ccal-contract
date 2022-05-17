@@ -194,7 +194,10 @@ contract CCALSubChain is BaseContract {
                 IERC721Upgradeable(asset.game).safeTransferFrom(address(this), _msgSender(), asset.toolIds[idx]);
             }
 
-            (bool success, ) = _msgSender().call{value: msg.value}(new bytes(0));
+            if (msg.value > 0) {
+                (bool success, ) = _msgSender().call{value: msg.value}(new bytes(0));
+                require(success, "failed");
+            }
             emit LogWithdrawAsset(asset.game, _msgSender(), internalId);
         } else {
             require(block.timestamp > asset.depositTime + asset.cycle, "not expired");
