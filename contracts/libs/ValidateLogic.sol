@@ -42,9 +42,9 @@ library ValidateLogic {
         uint minPay,
         uint cycle,
         uint internalId,
-        mapping(uint => DepositAsset) storage assetMap
+        mapping(uint => ICCAL.DepositAsset) storage assetMap
     ) external view {
-        DepositAsset memory asset = assetMap[internalId];
+        ICCAL.DepositAsset memory asset = assetMap[internalId];
         require(
             (cycle > 0 && cycle <= 365 days) &&
             amountPerDay > 0 &&
@@ -54,7 +54,7 @@ library ValidateLogic {
         );
 
         require(
-            asset.status == AssetStatus.INITIAL &&
+            asset.status == ICCAL.AssetStatus.INITIAL &&
             asset.holder == editor,
             "bad para"
         );
@@ -66,12 +66,12 @@ library ValidateLogic {
         uint totalAmount,
         uint minPay,
         uint cycle,
-        mapping(uint => DepositAsset) storage assetMap
+        mapping(uint => ICCAL.DepositAsset) storage assetMap
     ) public view returns(bool) {
-        DepositAsset memory asset = assetMap[internalId];
+        ICCAL.DepositAsset memory asset = assetMap[internalId];
         if (
             asset.depositTime + asset.cycle <= block.timestamp ||
-            asset.status != AssetStatus.INITIAL ||
+            asset.status != ICCAL.AssetStatus.INITIAL ||
             asset.internalId != internalId
         ) {
             return false;
@@ -87,9 +87,9 @@ library ValidateLogic {
         address user,
         uint16 chainId,
         uint internalId,
-        mapping(address => InterestInfo[]) storage pendingWithdraw
+        mapping(address => ICCAL.InterestInfo[]) storage pendingWithdraw
     ) public view returns(bool, uint) {
-        InterestInfo[] memory list = pendingWithdraw[user];
+        ICCAL.InterestInfo[] memory list = pendingWithdraw[user];
         if (list.length < 1) {
             return (false, 0);
         }

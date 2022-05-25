@@ -18,7 +18,7 @@ import "./BaseContract.sol";
 import "./interface.sol";
 
 contract CCALSubChain is BaseContract {
-    mapping(uint => DepositAsset) public nftMap;
+    mapping(uint => ICCAL.DepositAsset) public nftMap;
 
     uint16 public mainChainId;
 
@@ -53,10 +53,10 @@ contract CCALSubChain is BaseContract {
             IERC721Upgradeable(game).safeTransferFrom(_msgSender(), address(this), toolIds[i]);
         }
 
-        nftMap[internalId] = DepositAsset({
+        nftMap[internalId] = ICCAL.DepositAsset({
             depositTime: block.timestamp,
             amountPerDay: amountPerDay,
-            status: AssetStatus.INITIAL,
+            status: ICCAL.AssetStatus.INITIAL,
             totalAmount: totalAmount,
             internalId: internalId,
             holder: _msgSender(),
@@ -93,12 +93,12 @@ contract CCALSubChain is BaseContract {
             nftMap
         );
 
-        nftMap[internalId] = DepositAsset({
+        nftMap[internalId] = ICCAL.DepositAsset({
             depositTime: nftMap[internalId].depositTime,
             toolIds: nftMap[internalId].toolIds,
             game: nftMap[internalId].game,
             amountPerDay: amountPerDay,
-            status: AssetStatus.INITIAL,
+            status: ICCAL.AssetStatus.INITIAL,
             totalAmount: totalAmount,
             internalId: internalId,
             holder: _msgSender(),
@@ -112,9 +112,9 @@ contract CCALSubChain is BaseContract {
     }
 
     function repayAsset(uint internalId) external payable {
-        DepositAsset storage asset = nftMap[internalId];
+        ICCAL.DepositAsset storage asset = nftMap[internalId];
 
-        require(asset.status == AssetStatus.BORROW && asset.borrower == _msgSender(), "bad req");
+        require(asset.status == ICCAL.AssetStatus.BORROW && asset.borrower == _msgSender(), "bad req");
 
         for (uint idx; idx < asset.toolIds.length; idx++) {
             IERC721Upgradeable(asset.game).safeTransferFrom(_msgSender(), address(this), asset.toolIds[idx]);
@@ -129,10 +129,10 @@ contract CCALSubChain is BaseContract {
 
         asset.borrowTime = 0;
         asset.borrower = address(0);
-        asset.status = AssetStatus.INITIAL;
+        asset.status = ICCAL.AssetStatus.INITIAL;
 
         bytes memory payload = abi.encode(
-            Operation.REPAY,
+            ICCAL.Operation.REPAY,
             abi.encode(
                 asset.holder,
                 internalId,
@@ -162,10 +162,10 @@ contract CCALSubChain is BaseContract {
 
     event LogBorrowAsset(address indexed game, address indexed borrower, uint indexed internalId);
     function _borrow(address _borrower, uint internalId) internal {
-        DepositAsset storage asset = nftMap[internalId];
+        ICCAL.DepositAsset storage asset = nftMap[internalId];
 
         asset.borrower = _borrower;
-        asset.status = AssetStatus.BORROW;
+        asset.status = ICCAL.AssetStatus.BORROW;
         asset.borrowTime = block.timestamp;
 
         for (uint i; i < asset.toolIds.length; i++) {
@@ -177,25 +177,25 @@ contract CCALSubChain is BaseContract {
 
     event LogWithdrawAsset(address indexed game, address indexed depositor, uint indexed internalId);
     function withdrawAsset(uint internalId) external payable whenNotPaused {
-        DepositAsset memory asset = nftMap[internalId];
+        ICCAL.DepositAsset memory asset = nftMap[internalId];
 
         require(
-            (asset.status != AssetStatus.WITHDRAW) &&
-            (asset.status != AssetStatus.LIQUIDATE) &&
+            (asset.status != ICCAL.AssetStatus.WITHDRAW) &&
+            (asset.status != ICCAL.AssetStatus.LIQUIDATE) &&
             _msgSender() == asset.holder,
             "bad parameters"
         );
 
         // if tool isn't borrow, depositor can withdraw
-        if (asset.status == AssetStatus.INITIAL) {
-            nftMap[internalId].status = AssetStatus.WITHDRAW;
+        if (asset.status == ICCAL.AssetStatus.INITIAL) {
+            nftMap[internalId].status = ICCAL.AssetStatus.WITHDRAW;
 
             for (uint idx; idx < asset.toolIds.length; idx++) {
                 IERC721Upgradeable(asset.game).safeTransferFrom(address(this), _msgSender(), asset.toolIds[idx]);
             }
 
             if (msg.value > 0) {
-                (bool success, ) = _msgSender().call{value: msg.value}(new bytes(0));
+                (bool success, ) = _msgSender().call{value: msg.value, gas: 30_000}(new bytes(0));
                 require(success, "failed");
             }
             emit LogWithdrawAsset(asset.game, _msgSender(), internalId);
@@ -208,12 +208,12 @@ contract CCALSubChain is BaseContract {
     event LogLiquidation(address indexed game, uint internalId);
     function liquidate(uint internalId) internal {
 
-        DepositAsset storage asset = nftMap[internalId];
+        ICCAL.DepositAsset storage asset = nftMap[internalId];
 
-        asset.status = AssetStatus.LIQUIDATE;
+        asset.status = ICCAL.AssetStatus.LIQUIDATE;
 
         bytes memory payload = abi.encode(
-            Operation.LIQUIDATE,
+            ICCAL.Operation.LIQUIDATE,
             abi.encode(
                 asset.holder,
                 selfChainId,
@@ -276,8 +276,8 @@ contract CCALSubChain is BaseContract {
     event UnknownOp(bytes payload);
     function _LzReceive(uint16, bytes memory, uint64, bytes memory _payload) internal {
         // decode
-        (Operation op, bytes memory _other) = abi.decode(_payload, (Operation, bytes));
-        if (op == Operation.BORROW) {
+        (ICCAL.Operation op, bytes memory _other) = abi.decode(_payload, (ICCAL.Operation, bytes));
+        if (op == ICCAL.Operation.BORROW) {
             handleBorrowAsset(_other);
         } else {
             emit UnknownOp(_payload);
@@ -287,12 +287,12 @@ contract CCALSubChain is BaseContract {
     event BorrowFail(address indexed game, address indexed user, uint indexed id);
     function handleBorrowAsset(bytes memory _payload) internal {
         (address user, uint id, uint _dp, uint _total, uint _min, uint _c) = abi.decode(_payload, (address, uint, uint, uint, uint, uint));
-        DepositAsset memory asset = nftMap[id];
+        ICCAL.DepositAsset memory asset = nftMap[id];
         bool canBorrow;
         // prevent depositor change data before borrower freeze token
         if (
             asset.depositTime + asset.cycle > block.timestamp &&
-            asset.status == AssetStatus.INITIAL &&
+            asset.status == ICCAL.AssetStatus.INITIAL &&
             asset.totalAmount == _total &&
             asset.amountPerDay == _dp &&
             asset.internalId == id &&

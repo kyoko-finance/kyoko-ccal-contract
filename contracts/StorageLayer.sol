@@ -14,12 +14,12 @@ pragma solidity 0.8.7;
 import "./interface.sol";
 
 contract StorageLayer {
-    mapping(address => InterestInfo[]) public pendingWithdraw;
+    mapping(address => ICCAL.InterestInfo[]) public pendingWithdraw;
 
-    mapping(bytes32 => FreezeTokenInfo) public freezeMap;
+    mapping(bytes32 => ICCAL.FreezeTokenInfo) public freezeMap;
 
     // internalId => DepositAsset
-    mapping(uint => DepositAsset) public nftMap;
+    mapping(uint => ICCAL.DepositAsset) public nftMap;
 
     // uint is wei
     mapping(address => uint) public creditUsed;

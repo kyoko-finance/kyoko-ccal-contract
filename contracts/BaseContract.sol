@@ -28,8 +28,6 @@ import "./LayerZero/ILayerZeroUserApplicationConfig.sol";
 import "./LayerZero/ILayerZeroReceiver.sol";
 import "./LayerZero/ILayerZeroEndpoint.sol";
 
-import "./interface.sol";
-
 contract BaseContract is
     ProjectConfig,
     OwnableUpgradeable,
@@ -139,7 +137,7 @@ contract BaseContract is
         uint _id,
         uint16 _chainId
     ) external pure returns(bytes32) {
-        return keccak256(abi.encodePacked(_id, _chainId));
+        return keccak256(abi.encode(_id, _chainId));
     }
 
     function pause() external onlyOwner {

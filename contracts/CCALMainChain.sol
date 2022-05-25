@@ -99,10 +99,10 @@ contract CCALMainChain is
             IERC721Upgradeable(game).safeTransferFrom(_msgSender(), address(this), toolIds[i]);
         }
 
-        nftMap[internalId] = DepositAsset({
+        nftMap[internalId] = ICCAL.DepositAsset({
             depositTime: block.timestamp,
             amountPerDay: amountPerDay,
-            status: AssetStatus.INITIAL,
+            status: ICCAL.AssetStatus.INITIAL,
             totalAmount: totalAmount,
             internalId: internalId,
             holder: _msgSender(),
@@ -139,12 +139,12 @@ contract CCALMainChain is
             nftMap
         );
 
-        nftMap[_internalId] = DepositAsset({
+        nftMap[_internalId] = ICCAL.DepositAsset({
             depositTime: nftMap[_internalId].depositTime,
             toolIds: nftMap[_internalId].toolIds,
             game: nftMap[_internalId].game,
             amountPerDay: amountPerDay,
-            status: AssetStatus.INITIAL,
+            status: ICCAL.AssetStatus.INITIAL,
             totalAmount: totalAmount,
             internalId: _internalId,
             holder: _msgSender(),
@@ -159,10 +159,10 @@ contract CCALMainChain is
 
     event LogBorrowAsset(address indexed game, address indexed borrower, uint indexed internalId);
     function _borrow(address _borrower, uint _internalId) internal {
-        DepositAsset storage asset = nftMap[_internalId];
+        ICCAL.DepositAsset storage asset = nftMap[_internalId];
 
         asset.borrower = _borrower;
-        asset.status = AssetStatus.BORROW;
+        asset.status = ICCAL.AssetStatus.BORROW;
         asset.borrowTime = block.timestamp;
 
         for (uint i; i < asset.toolIds.length; i++) {
@@ -180,7 +180,7 @@ contract CCALMainChain is
         uint _cycle,
         bool _useCredit
     ) external {
-        require(freezeMap[this.getFreezeKey(_internalId, selfChainId)].operator != address(0), "bad req");
+        require(freezeMap[this.getFreezeKey(_internalId, selfChainId)].operator == address(0), "bad req");
 
         require(ValidateLogic.checkBorrowPara(
             _internalId,
@@ -190,7 +190,7 @@ contract CCALMainChain is
             _cycle,
             nftMap
         ), "can not borrow");
-        DepositAsset memory asset = nftMap[_internalId];
+        ICCAL.DepositAsset memory asset = nftMap[_internalId];
 
         if (!_useCredit) {
             SafeERC20Upgradeable.safeTransferFrom(IERC20Upgradeable(currency), _msgSender(), address(this), asset.totalAmount);
@@ -203,9 +203,8 @@ contract CCALMainChain is
                 );
         }
 
-        freezeMap[this.getFreezeKey(_internalId, selfChainId)] = FreezeTokenInfo({
+        freezeMap[this.getFreezeKey(_internalId, selfChainId)] = ICCAL.FreezeTokenInfo({
             amount: asset.totalAmount,
-            internalId: _internalId,
             useCredit: _useCredit,
             operator: _msgSender()
         });
@@ -230,7 +229,7 @@ contract CCALMainChain is
     }
 
     function borrowOtherChainAsset(
-        uint16 _chainId,
+        uint16 _dstChainId,
         uint _internalId,
         uint _amountPerDay,
         uint _totalAmount,
@@ -238,10 +237,9 @@ contract CCALMainChain is
         uint _cycle,
         bool _useCredit
     ) external payable {
-        require(freezeMap[this.getFreezeKey(_internalId, _chainId)].operator == address(0), "can't borrow now");
+        require(freezeMap[this.getFreezeKey(_internalId, _dstChainId)].operator == address(0), "can't borrow now");
 
-        freezeMap[this.getFreezeKey(_internalId, _chainId)] = FreezeTokenInfo({
-            internalId: _internalId,
+        freezeMap[this.getFreezeKey(_internalId, _dstChainId)] = ICCAL.FreezeTokenInfo({
             amount: _totalAmount,
             useCredit: _useCredit,
             operator: _msgSender()
@@ -250,10 +248,10 @@ contract CCALMainChain is
         // get the fees we need to pay to LayerZero + Relayer to cover message delivery
         // you will be refunded for extra gas paid
         (uint messageFee, ) = layerZeroEndpoint.estimateFees(
-            _chainId,
+            _dstChainId,
             address(this),
             abi.encode(
-                Operation.BORROW,
+                ICCAL.Operation.BORROW,
                 abi.encode(
                     _msgSender(),
                     _internalId,
@@ -281,10 +279,10 @@ contract CCALMainChain is
         }
 
         layerZeroEndpoint.send{value: msg.value}(
-            _chainId,                          // destination chainId
-            remotes[_chainId],                 // destination address of nft contract
+            _dstChainId,                          // destination chainId
+            remotes[_dstChainId],                 // destination address of nft contract
             abi.encode(
-                Operation.BORROW,
+                ICCAL.Operation.BORROW,
                 abi.encode(
                     _msgSender(),
                     _internalId,
@@ -301,9 +299,9 @@ contract CCALMainChain is
     }
 
     function repayAsset(uint _internalId) external {
-        DepositAsset memory asset = nftMap[_internalId];
+        ICCAL.DepositAsset memory asset = nftMap[_internalId];
 
-        require(asset.status == AssetStatus.BORROW && asset.borrower == _msgSender(), "bad req");
+        require(asset.status == ICCAL.AssetStatus.BORROW && asset.borrower == _msgSender(), "bad req");
 
         for (uint idx; idx < asset.toolIds.length; idx++) {
             IERC721Upgradeable(asset.game).safeTransferFrom(_msgSender(), address(this), asset.toolIds[idx]);
@@ -313,7 +311,7 @@ contract CCALMainChain is
     }
 
     function _afterRepay(uint _internalId) internal {
-        DepositAsset storage asset = nftMap[_internalId];
+        ICCAL.DepositAsset storage asset = nftMap[_internalId];
 
         uint interest = ValidateLogic.calcCost(
             asset.amountPerDay,
@@ -324,25 +322,25 @@ contract CCALMainChain is
 
         asset.borrowTime = 0;
         asset.borrower = address(0);
-        asset.status = AssetStatus.INITIAL;
+        asset.status = ICCAL.AssetStatus.INITIAL;
 
         updateDataAfterRepay(asset.holder, _internalId, selfChainId, interest);
     }
 
     event LogWithdrawAsset(address indexed game, address indexed depositor, uint indexed internalId);
     function withdrawAsset(uint internalId) external whenNotPaused {
-        DepositAsset memory asset = nftMap[internalId];
+        ICCAL.DepositAsset memory asset = nftMap[internalId];
 
         require(
-            (asset.status != AssetStatus.WITHDRAW) &&
-            (asset.status != AssetStatus.LIQUIDATE) &&
+            (asset.status != ICCAL.AssetStatus.WITHDRAW) &&
+            (asset.status != ICCAL.AssetStatus.LIQUIDATE) &&
             _msgSender() == asset.holder,
             "bad parameters"
         );
 
         // if tool isn't borrow, depositor can withdraw
-        if (asset.status == AssetStatus.INITIAL) {
-            nftMap[internalId].status = AssetStatus.WITHDRAW;
+        if (asset.status == ICCAL.AssetStatus.INITIAL) {
+            nftMap[internalId].status = ICCAL.AssetStatus.WITHDRAW;
 
             for (uint idx; idx < asset.toolIds.length; idx++) {
                 IERC721Upgradeable(asset.game).safeTransferFrom(address(this), _msgSender(), asset.toolIds[idx]);
@@ -364,9 +362,9 @@ contract CCALMainChain is
             pendingWithdraw
         );
         require(canWithdraw, "can not withdraw");
-        InterestInfo[] storage list = pendingWithdraw[_msgSender()];
+        ICCAL.InterestInfo[] storage list = pendingWithdraw[_msgSender()];
 
-        InterestInfo memory item = list[index];
+        ICCAL.InterestInfo memory item = list[index];
 
         list[index] = list[list.length - 1];
         list.pop();
@@ -388,9 +386,9 @@ contract CCALMainChain is
     event LogLiquidation(address indexed game, uint internalId);
     function liquidate(uint internalId) internal {
 
-        DepositAsset storage asset = nftMap[internalId];
+        ICCAL.DepositAsset storage asset = nftMap[internalId];
 
-        asset.status = AssetStatus.LIQUIDATE;
+        asset.status = ICCAL.AssetStatus.LIQUIDATE;
         delete freezeMap[this.getFreezeKey(internalId, selfChainId)];
 
         recordWithdraw(asset.holder, true, internalId, selfChainId, asset.totalAmount);
@@ -431,10 +429,10 @@ contract CCALMainChain is
     event UnknownOp(bytes payload);
     function _LzReceive(uint16, bytes memory, uint64, bytes memory _payload) internal {
         // decode
-        (Operation op, bytes memory _other) = abi.decode(_payload, (Operation, bytes));
-        if (op == Operation.REPAY) {
+        (ICCAL.Operation op, bytes memory _other) = abi.decode(_payload, (ICCAL.Operation, bytes));
+        if (op == ICCAL.Operation.REPAY) {
             handleRepayAsset(_other);
-        } else if (op == Operation.LIQUIDATE) {
+        } else if (op == ICCAL.Operation.LIQUIDATE) {
             handleLiquidate(_other);
         } else {
             emit UnknownOp(_payload);
@@ -449,7 +447,7 @@ contract CCALMainChain is
         uint amount
     ) internal {
         pendingWithdraw[user].push(
-            InterestInfo({
+            ICCAL.InterestInfo({
                 internalId: internalId,
                 chainId: _chainId,
                 isRent: _isRent,
@@ -479,7 +477,7 @@ contract CCALMainChain is
         uint16 _chainId,
         uint _interest
     ) internal {
-        FreezeTokenInfo memory info = freezeMap[this.getFreezeKey(_internalId, _chainId)];
+        ICCAL.FreezeTokenInfo memory info = freezeMap[this.getFreezeKey(_internalId, _chainId)];
         delete freezeMap[this.getFreezeKey(_internalId, _chainId)];
 
         recordWithdraw(assetHolder, true, _internalId, _chainId, _interest);
@@ -508,7 +506,7 @@ contract CCALMainChain is
             (address, uint16, uint)
         );
 
-        FreezeTokenInfo memory info = freezeMap[this.getFreezeKey(_internalId, _chainId)];
+        ICCAL.FreezeTokenInfo memory info = freezeMap[this.getFreezeKey(_internalId, _chainId)];
 
         delete freezeMap[this.getFreezeKey(_internalId, _chainId)];
 
@@ -536,7 +534,7 @@ contract CCALMainChain is
         uint16 _chainId
     ) external onlyAuditor {
 
-        FreezeTokenInfo memory freezeToken = freezeMap[this.getFreezeKey(internalId, _chainId)];
+        ICCAL.FreezeTokenInfo memory freezeToken = freezeMap[this.getFreezeKey(internalId, _chainId)];
 
         require(freezeToken.amount > 0 && !freezeToken.useCredit, "bad req");
 
