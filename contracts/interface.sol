@@ -44,7 +44,6 @@ interface ICCAL {
 
     struct FreezeTokenInfo {
         address operator;
-        uint internalId;
         bool useCredit;
         uint amount;
     }
