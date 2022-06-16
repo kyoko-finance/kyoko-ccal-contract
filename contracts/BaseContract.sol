@@ -14,7 +14,6 @@ pragma solidity 0.8.7;
 import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
@@ -37,7 +36,6 @@ contract BaseContract is
     ILayerZeroReceiver,
     ILayerZeroUserApplicationConfig
 {
-    using SafeMathUpgradeable for uint;
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
@@ -137,7 +135,21 @@ contract BaseContract is
         uint _id,
         uint16 _chainId
     ) external pure returns(bytes32) {
-        return keccak256(abi.encode(_id, _chainId));
+        return keccak256(abi.encodePacked(_id, _chainId));
+    }
+
+    function addTokens(address _token, uint8 _decimals, bool stable) external onlyOwner {
+        tokenInfos[_token].active = true;
+        tokenInfos[_token].decimals = _decimals;
+        tokenInfos[_token].stable = stable;
+    }
+
+    function removeTokens(address _token) external onlyOwner {
+        delete tokenInfos[_token];
+    }
+
+    function checkTokenInList(address _token) internal view returns(bool) {
+        return tokenInfos[_token].active;
     }
 
     function pause() external onlyOwner {

@@ -24,7 +24,7 @@ contract StorageLayer {
     // uint is wei
     mapping(address => uint) public creditUsed;
 
-    uint8 public currencyDecimals;
+    // uint8 public currencyDecimals;
 
-    address public currency;
+    // address public currency;
 }

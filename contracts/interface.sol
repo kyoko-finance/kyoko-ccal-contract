@@ -23,13 +23,15 @@ interface ICCAL {
     enum AssetStatus { INITIAL, BORROW, REPAY, WITHDRAW, LIQUIDATE }
 
     struct TokenInfo {
-        uint decimals;
+        uint8 decimals;
         bool active;
+        bool stable;
     }
 
     struct DepositAsset {
         uint cycle;
         uint minPay;
+        address token;
         AssetStatus status;
         uint[] toolIds;
         address holder;
@@ -46,12 +48,14 @@ interface ICCAL {
         address operator;
         bool useCredit;
         uint amount;
+        address token;
     }
 
     struct InterestInfo {
         uint internalId;
         uint16 chainId;
         uint amount;
-        bool isRent;
+        bool isLent;
+        address token;
     }
 }

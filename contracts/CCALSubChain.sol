@@ -39,6 +39,7 @@ contract CCALSubChain is BaseContract {
     );
     function deposit(
         address game,
+        address token,
         uint[] memory toolIds,
         uint amountPerDay,
         uint totalAmount,
@@ -63,6 +64,7 @@ contract CCALSubChain is BaseContract {
             borrower: address(0),
             toolIds: toolIds,
             minPay: minPay,
+            token: token,
             borrowTime: 0,
             game: game,
             cycle: cycle
@@ -71,13 +73,10 @@ contract CCALSubChain is BaseContract {
         emit LogDepositAsset(game, _msgSender(), internalId);
     }
 
-    event LogEditDepositAsset(
-        address indexed game,
-        address indexed editor,
-        uint indexed internalId
-    );
+    event LogEditDepositAsset(uint indexed internalId);
     function editDepositAsset(
         uint internalId,
+        address token,
         uint amountPerDay,
         uint totalAmount,
         uint minPay,
@@ -104,13 +103,15 @@ contract CCALSubChain is BaseContract {
             holder: _msgSender(),
             borrower: address(0),
             minPay: minPay,
+            token: token,
             borrowTime: 0,
             cycle: cycle
         });
 
-        emit LogEditDepositAsset(nftMap[internalId].game, _msgSender(), internalId);
+        emit LogEditDepositAsset(internalId);
     }
 
+    event LogRepayAsset(uint indexed internalId, uint interest, uint time);
     function repayAsset(uint internalId) external payable {
         ICCAL.DepositAsset storage asset = nftMap[internalId];
 
@@ -158,9 +159,11 @@ contract CCALSubChain is BaseContract {
             address(0x0),                      //  'zroPaymentAddress' unused for this
             adapterParams                      //  txParameters 
         );
+
+        emit LogRepayAsset(internalId, interest, block.timestamp);
     }
 
-    event LogBorrowAsset(address indexed game, address indexed borrower, uint indexed internalId);
+    event LogBorrowAsset(address indexed borrower, uint indexed internalId);
     function _borrow(address _borrower, uint internalId) internal {
         ICCAL.DepositAsset storage asset = nftMap[internalId];
 
@@ -172,10 +175,10 @@ contract CCALSubChain is BaseContract {
             IERC721Upgradeable(asset.game).safeTransferFrom(address(this), _borrower, asset.toolIds[i]);
         }
 
-        emit LogBorrowAsset(asset.game, _borrower, internalId);
+        emit LogBorrowAsset(_borrower, internalId);
     }
 
-    event LogWithdrawAsset(address indexed game, address indexed depositor, uint indexed internalId);
+    event LogWithdrawAsset(uint indexed internalId);
     function withdrawAsset(uint internalId) external payable whenNotPaused {
         ICCAL.DepositAsset memory asset = nftMap[internalId];
 
@@ -198,14 +201,14 @@ contract CCALSubChain is BaseContract {
                 (bool success, ) = _msgSender().call{value: msg.value, gas: 30_000}(new bytes(0));
                 require(success, "failed");
             }
-            emit LogWithdrawAsset(asset.game, _msgSender(), internalId);
+            emit LogWithdrawAsset(internalId);
         } else {
             require(block.timestamp > asset.depositTime + asset.cycle, "not expired");
             liquidate(internalId);
         }
     }
 
-    event LogLiquidation(address indexed game, uint internalId);
+    event LogLiquidation(uint internalId);
     function liquidate(uint internalId) internal {
 
         ICCAL.DepositAsset storage asset = nftMap[internalId];
@@ -232,14 +235,14 @@ contract CCALSubChain is BaseContract {
 
         layerZeroEndpoint.send{value: msg.value}(
             mainChainId,                     //  destination chainId
-            remotes[mainChainId],            //  destination address of nft contract
+            remotes[mainChainId],            //  destination address of ccal contract
             payload,                          //  abi.encoded()'ed bytes
             payable(_msgSender()),                    //  refund address
             address(0x0),                      //  'zroPaymentAddress' unused for this
             adapterParams                      //  txParameters 
         );
 
-        emit LogLiquidation(asset.game, internalId);
+        emit LogLiquidation(internalId);
     }
 
     event MessageFailed(uint16 _srcChainId, bytes _srcAddress, uint64 _nonce, bytes _payload);
@@ -286,7 +289,7 @@ contract CCALSubChain is BaseContract {
 
     event BorrowFail(address indexed game, address indexed user, uint indexed id);
     function handleBorrowAsset(bytes memory _payload) internal {
-        (address user, uint id, uint _dp, uint _total, uint _min, uint _c) = abi.decode(_payload, (address, uint, uint, uint, uint, uint));
+        (address user, uint id, uint _dp, uint _total, uint _min, address _token, uint _c) = abi.decode(_payload, (address, uint, uint, uint, uint, address, uint));
         ICCAL.DepositAsset memory asset = nftMap[id];
         bool canBorrow;
         // prevent depositor change data before borrower freeze token
@@ -297,6 +300,7 @@ contract CCALSubChain is BaseContract {
             asset.amountPerDay == _dp &&
             asset.internalId == id &&
             asset.minPay == _min &&
+            asset.token == _token &&
             asset.cycle == _c
         ) {
             canBorrow = true;
@@ -306,5 +310,9 @@ contract CCALSubChain is BaseContract {
         } else {
             _borrow(user, id);
         }
+    }
+
+    function getToolIds(uint internalId) external view returns(uint[] memory toolIds) {
+        toolIds = nftMap[internalId].toolIds;
     }
 }

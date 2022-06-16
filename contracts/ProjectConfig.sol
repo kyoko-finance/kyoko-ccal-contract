@@ -11,8 +11,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.7;
 
-import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
-
 import "./LayerZero/ILayerZeroEndpoint.sol";
 import "./interface.sol";
 
@@ -22,6 +20,8 @@ contract ProjectConfig {
     ILayerZeroEndpoint public layerZeroEndpoint;
 
     mapping(uint16 => bytes) public remotes;
+
+    mapping(address => ICCAL.TokenInfo) public tokenInfos;
 
     uint16 public constant VERSION = 1;
 }
