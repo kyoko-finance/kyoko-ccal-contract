@@ -140,7 +140,8 @@ contract CCALSubChain is BaseContract {
                 asset.holder,
                 internalId,
                 selfChainId,
-                interest
+                interest,
+                asset.borrowIndex
             )
         );
 
