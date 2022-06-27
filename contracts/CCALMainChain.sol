@@ -118,7 +118,8 @@ contract CCALMainChain is
             token: token,
             borrowTime: 0,
             game: game,
-            cycle: cycle
+            cycle: cycle,
+            borrowIndex: 0
         });
 
         emit LogDepositAsset(game, _msgSender(), internalId);
@@ -146,6 +147,7 @@ contract CCALMainChain is
         require(checkTokenInList(token), "unsupported token");
 
         nftMap[_internalId] = ICCAL.DepositAsset({
+            borrowIndex: nftMap[_internalId].borrowIndex,
             depositTime: nftMap[_internalId].depositTime,
             toolIds: nftMap[_internalId].toolIds,
             game: nftMap[_internalId].game,
@@ -168,9 +170,10 @@ contract CCALMainChain is
     function _borrow(address _borrower, uint _internalId) internal {
         ICCAL.DepositAsset storage asset = nftMap[_internalId];
 
+        asset.borrowIndex += 1;
         asset.borrower = _borrower;
-        asset.status = ICCAL.AssetStatus.BORROW;
         asset.borrowTime = block.timestamp;
+        asset.status = ICCAL.AssetStatus.BORROW;
 
         for (uint i; i < asset.toolIds.length; i++) {
             IERC721Upgradeable(asset.game).safeTransferFrom(address(this), _borrower, asset.toolIds[i]);
@@ -346,7 +349,7 @@ contract CCALMainChain is
         asset.borrower = address(0);
         asset.status = ICCAL.AssetStatus.INITIAL;
 
-        updateDataAfterRepay(asset.holder, _internalId, selfChainId, interest);
+        updateDataAfterRepay(asset.holder, _internalId, selfChainId, interest, asset.borrowIndex);
 
         emit LogRepayAsset(_internalId, interest, block.timestamp);
     }
@@ -378,11 +381,12 @@ contract CCALMainChain is
     }
 
     event LogWithdrawToken(bytes _address, uint indexed internalId, address indexed user, uint amount);
-    function withdrawToken(uint16 _chainId, uint _internalId) external {
+    function withdrawToken(uint16 _chainId, uint _internalId, uint _borrowIdx) external {
         (bool canWithdraw, uint index) = ValidateLogic.checkWithdrawTokenPara(
             _msgSender(),
             _chainId,
             _internalId,
+            _borrowIdx,
             pendingWithdraw
         );
         require(canWithdraw, "can not withdraw");
@@ -418,7 +422,7 @@ contract CCALMainChain is
         asset.status = ICCAL.AssetStatus.LIQUIDATE;
         delete freezeMap[this.getFreezeKey(internalId, selfChainId)];
 
-        recordWithdraw(asset.holder, true, internalId, selfChainId, asset.totalAmount, asset.token);
+        recordWithdraw(asset.holder, true, internalId, selfChainId, asset.totalAmount, asset.token, asset.borrowIndex);
         emit LogLiquidation(internalId);
     }
 
@@ -476,10 +480,12 @@ contract CCALMainChain is
         uint internalId,
         uint16 _chainId,
         uint amount,
-        address token
+        address token,
+        uint borrowIndex
     ) internal {
         pendingWithdraw[user].push(
             ICCAL.InterestInfo({
+                borrowIndex: borrowIndex,
                 internalId: internalId,
                 chainId: _chainId,
                 isLent: _isLent,
@@ -495,20 +501,22 @@ contract CCALMainChain is
             address _holder,
             uint _internalId,
             uint16 _chainId,
-            uint _interest
+            uint _interest,
+            uint _borrowIndex
         ) = abi.decode(
             _payload,
-            (address, uint, uint16, uint)
+            (address, uint, uint16, uint, uint)
         );
 
-        updateDataAfterRepay(_holder, _internalId, _chainId, _interest);
+        updateDataAfterRepay(_holder, _internalId, _chainId, _interest, _borrowIndex);
     }
 
     function updateDataAfterRepay(
         address assetHolder,
         uint _internalId,
         uint16 _chainId,
-        uint _interest
+        uint _interest,
+        uint _borrowIndex
     ) internal {
         bytes32 freeKey = this.getFreezeKey(_internalId, _chainId);
 
@@ -516,8 +524,7 @@ contract CCALMainChain is
         delete freezeMap[freeKey];
 
         address token = info.token;
-
-        recordWithdraw(assetHolder, true, _internalId, _chainId, _interest, token);
+        recordWithdraw(assetHolder, true, _internalId, _chainId, _interest, token, _borrowIndex);
 
         uint amountLeave = info.amount - _interest;
 
@@ -530,7 +537,7 @@ contract CCALMainChain is
                     .div(10**tokenInfos[token].decimals)
             );
         } else {
-            recordWithdraw(info.operator, false, _internalId, _chainId, amountLeave, token);
+            recordWithdraw(info.operator, false, _internalId, _chainId, amountLeave, token, _borrowIndex);
         }
     }
 
@@ -541,10 +548,11 @@ contract CCALMainChain is
         (
             address _holder,
             uint16 _chainId,
-            uint _internalId
+            uint _internalId,
+            uint _borrowIndex
         ) = abi.decode(
             _payload,
-            (address, uint16, uint)
+            (address, uint16, uint, uint)
         );
 
         bytes32 freeKey = this.getFreezeKey(_internalId, _chainId);
@@ -553,7 +561,7 @@ contract CCALMainChain is
 
         delete freezeMap[freeKey];
 
-        recordWithdraw(_holder, true, _internalId, _chainId, info.amount, info.token);
+        recordWithdraw(_holder, true, _internalId, _chainId, info.amount, info.token, _borrowIndex);
     }
 
     function repayCredit(uint amount, address _token) external {
