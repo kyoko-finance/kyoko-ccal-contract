@@ -135,7 +135,7 @@ contract BaseContract is
         uint _id,
         uint16 _chainId
     ) external pure returns(bytes32) {
-        return keccak256(abi.encodePacked(_id, _chainId));
+        return keccak256(abi.encode(_id, _chainId));
     }
 
     function addTokens(address _token, uint8 _decimals, bool stable) external onlyOwner {
