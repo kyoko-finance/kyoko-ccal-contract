@@ -87,6 +87,7 @@ library ValidateLogic {
         address user,
         uint16 chainId,
         uint internalId,
+        uint borrowIdx,
         mapping(address => ICCAL.InterestInfo[]) storage pendingWithdraw
     ) public view returns(bool, uint) {
         ICCAL.InterestInfo[] memory list = pendingWithdraw[user];
@@ -96,6 +97,7 @@ library ValidateLogic {
         uint index;
         for (uint i; i < list.length; i++) {
             if (
+                list[i].borrowIndex == borrowIdx &&
                 list[i].chainId == chainId &&
                 list[i].internalId == internalId 
             ) {

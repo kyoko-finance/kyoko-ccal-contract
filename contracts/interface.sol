@@ -31,17 +31,18 @@ interface ICCAL {
     struct DepositAsset {
         uint cycle;
         uint minPay;
-        address token;
-        AssetStatus status;
-        uint[] toolIds;
-        address holder;
         uint borrowTime;
         uint depositTime;
         uint totalAmount;
-        address borrower;
         uint amountPerDay;
         uint internalId;
+        uint borrowIndex;
+        address borrower;
+        address token;
         address game;
+        address holder;
+        AssetStatus status;
+        uint[] toolIds;
     }
 
     struct FreezeTokenInfo {
@@ -55,6 +56,7 @@ interface ICCAL {
         uint internalId;
         uint16 chainId;
         uint amount;
+        uint borrowIndex;
         bool isLent;
         address token;
     }

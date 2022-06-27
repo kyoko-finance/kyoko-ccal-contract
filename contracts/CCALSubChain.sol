@@ -67,7 +67,8 @@ contract CCALSubChain is BaseContract {
             token: token,
             borrowTime: 0,
             game: game,
-            cycle: cycle
+            cycle: cycle,
+            borrowIndex: 0
         });
 
         emit LogDepositAsset(game, _msgSender(), internalId);
@@ -93,6 +94,7 @@ contract CCALSubChain is BaseContract {
         );
 
         nftMap[internalId] = ICCAL.DepositAsset({
+            borrowIndex: nftMap[internalId].borrowIndex,
             depositTime: nftMap[internalId].depositTime,
             toolIds: nftMap[internalId].toolIds,
             game: nftMap[internalId].game,
@@ -167,6 +169,7 @@ contract CCALSubChain is BaseContract {
     function _borrow(address _borrower, uint internalId) internal {
         ICCAL.DepositAsset storage asset = nftMap[internalId];
 
+        asset.borrowIndex += 1;
         asset.borrower = _borrower;
         asset.status = ICCAL.AssetStatus.BORROW;
         asset.borrowTime = block.timestamp;
@@ -220,7 +223,8 @@ contract CCALSubChain is BaseContract {
             abi.encode(
                 asset.holder,
                 selfChainId,
-                internalId
+                internalId,
+                asset.borrowIndex
             )
         );
 
