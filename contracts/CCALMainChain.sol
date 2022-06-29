@@ -394,24 +394,12 @@ contract CCALMainChain is
 
         ICCAL.InterestInfo memory item = list[index];
 
-        address currency = item.token;
-
         list[index] = list[list.length - 1];
         list.pop();
 
-        uint amount = item.amount;
-        uint toVault;
-        uint toUser = amount;
-        if (item.isLent) {
-            toVault = amount.mul(fee).div(BASE_FEE);
-            toUser  = amount.mul(BASE_FEE - fee).div(BASE_FEE);
-        }
-        if (toVault > 0) {
-            SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(currency), vault, toVault);
-        }
-        SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(currency), _msgSender(), toUser);
+        SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(item.token), _msgSender(), item.amount);
 
-        emit LogWithdrawToken(remotes[_chainId], _internalId, _msgSender(), amount);
+        emit LogWithdrawToken(remotes[_chainId], _internalId, _msgSender(), item.amount);
     }
 
     event LogLiquidation(uint internalId);
@@ -523,21 +511,19 @@ contract CCALMainChain is
         ICCAL.FreezeTokenInfo memory info = freezeMap[freeKey];
         delete freezeMap[freeKey];
 
-        address token = info.token;
-        recordWithdraw(assetHolder, true, _internalId, _chainId, _interest, token, _borrowIndex);
+        uint toVault = _interest * fee / BASE_FEE;
 
-        uint amountLeave = info.amount - _interest;
+        recordWithdraw(assetHolder, true, _internalId, _chainId, _interest - toVault, info.token, _borrowIndex);
 
         if (info.useCredit) {
-            // require(tokenInfos[token].stable == true, "token not match credit");
-
             creditUsed[info.operator] = creditUsed[info.operator].sub(
-                amountLeave
+                _interest
                     .mul(uint(1 ether))
-                    .div(10**tokenInfos[token].decimals)
+                    .div(10**tokenInfos[info.token].decimals)
             );
         } else {
-            recordWithdraw(info.operator, false, _internalId, _chainId, amountLeave, token, _borrowIndex);
+            SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(info.token), vault, toVault);
+            recordWithdraw(info.operator, false, _internalId, _chainId, info.amount - _interest, info.token, _borrowIndex);
         }
     }
 
@@ -561,7 +547,12 @@ contract CCALMainChain is
 
         delete freezeMap[freeKey];
 
-        recordWithdraw(_holder, true, _internalId, _chainId, info.amount, info.token, _borrowIndex);
+        uint toVault = info.amount * fee / BASE_FEE;
+        if (!info.useCredit) {
+            SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(info.token), vault, toVault);
+        }
+
+        recordWithdraw(_holder, true, _internalId, _chainId, info.amount - toVault, info.token, _borrowIndex);
     }
 
     function repayCredit(uint amount, address _token) external {
@@ -593,13 +584,13 @@ contract CCALMainChain is
 
         bytes32 freeKey = this.getFreezeKey(internalId, _chainId);
 
-        ICCAL.FreezeTokenInfo memory freezeToken = freezeMap[freeKey];
+        ICCAL.FreezeTokenInfo memory freezeInfo = freezeMap[freeKey];
 
-        require(freezeToken.amount > 0 && !freezeToken.useCredit, "bad req");
+        require(freezeInfo.amount > 0 && !freezeInfo.useCredit, "bad req");
 
         delete freezeMap[freeKey];
 
-        SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(freezeToken.token), freezeToken.operator, freezeToken.amount);
+        SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(freezeInfo.token), freezeInfo.operator, freezeInfo.amount);
     }
 
     function withdrawETH() external onlyOwner returns(bool) {
