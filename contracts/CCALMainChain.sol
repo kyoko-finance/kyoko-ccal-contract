@@ -399,7 +399,7 @@ contract CCALMainChain is
         }
     }
 
-    event LogWithdrawToken(bytes _address, uint indexed internalId, address indexed user, uint amount);
+    event LogWithdrawToken(bytes _address, uint16 chainId, uint indexed internalId, uint borrowIdx, address indexed user, uint amount);
     function withdrawToken(uint16 _chainId, uint _internalId, uint _borrowIdx) external {
         (bool canWithdraw, uint index) = ValidateLogic.checkWithdrawTokenPara(
             _msgSender(),
@@ -418,7 +418,7 @@ contract CCALMainChain is
 
         SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(item.token), _msgSender(), item.amount);
 
-        emit LogWithdrawToken(remotes[_chainId], _internalId, _msgSender(), item.amount);
+        emit LogWithdrawToken(remotes[_chainId], _chainId, _internalId, _borrowIdx, _msgSender(), item.amount);
     }
 
     event LogLiquidation(uint internalId);
