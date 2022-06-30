@@ -57,7 +57,6 @@ interface ICCAL {
         uint16 chainId;
         uint amount;
         uint borrowIndex;
-        bool isLent;
         address token;
     }
 }
