@@ -23,6 +23,11 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import { ProjectConfig } from "./ProjectConfig.sol";
+import "./interface.sol";
+
+import { ValidateLogic } from "./libs/ValidateLogic.sol";
+import { Errors } from "./libs/Errors.sol";
+
 import "./LayerZero/ILayerZeroUserApplicationConfig.sol";
 import "./LayerZero/ILayerZeroReceiver.sol";
 import "./LayerZero/ILayerZeroEndpoint.sol";
@@ -42,6 +47,9 @@ contract BaseContract is
     CountersUpgradeable.Counter private _internalId;
 
     uint16 public selfChainId;
+
+    // internalId => DepositAsset
+    mapping(uint => ICCAL.DepositAsset) public nftMap;
 
     event NFTReceived(
         address indexed operator,
@@ -75,6 +83,107 @@ contract BaseContract is
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
+    }
+
+    event LogDepositAsset(
+        address indexed game,
+        address indexed depositor,
+        uint indexed internalId,
+        uint amountPerDay,
+        uint totalAmount,
+        uint minPay,
+        uint cycle,
+        address token,
+        uint time
+    );
+    function deposit(
+        address game,
+        address token,
+        uint[] memory toolIds,
+        uint amountPerDay,
+        uint totalAmount,
+        uint minPay,
+        uint cycle
+    ) external {
+        ValidateLogic.checkDepositPara(game, toolIds, amountPerDay, totalAmount, minPay, cycle);
+        require(checkTokenInList(token), Errors.VL_TOKEN_NOT_SUPPORT);
+
+        uint internalId = getInternalId();
+
+        uint len = toolIds.length;
+        for (uint i = 0; i < len;) {
+            IERC721Upgradeable(game).safeTransferFrom(_msgSender(), address(this), toolIds[i]);
+            unchecked {
+                ++i;
+            }
+        }
+
+        nftMap[internalId] = ICCAL.DepositAsset({
+            depositTime: block.timestamp,
+            amountPerDay: amountPerDay,
+            status: ICCAL.AssetStatus.INITIAL,
+            totalAmount: totalAmount,
+            internalId: internalId,
+            holder: _msgSender(),
+            borrower: address(0),
+            toolIds: toolIds,
+            minPay: minPay,
+            token: token,
+            borrowTime: 0,
+            game: game,
+            cycle: cycle,
+            borrowIndex: 0
+        });
+
+        emit LogDepositAsset(game, _msgSender(), internalId, amountPerDay, totalAmount, minPay, cycle, token, block.timestamp);
+    }
+
+    event LogEditDepositAsset(
+        uint indexed internalId,
+        uint amountPerDay,
+        uint totalAmount,
+        uint minPay,
+        uint cycle,
+        address token
+    );
+    function editDepositAsset(
+        uint internalId,
+        address token,
+        uint amountPerDay,
+        uint totalAmount,
+        uint minPay,
+        uint cycle
+    ) external whenNotPaused {
+        ValidateLogic.checkEditPara(
+            _msgSender(),
+            amountPerDay,
+            totalAmount,
+            minPay,
+            cycle,
+            internalId,
+            nftMap
+        );
+
+        require(checkTokenInList(token), Errors.VL_TOKEN_NOT_SUPPORT);
+
+        nftMap[internalId] = ICCAL.DepositAsset({
+            borrowIndex: nftMap[internalId].borrowIndex,
+            depositTime: nftMap[internalId].depositTime,
+            toolIds: nftMap[internalId].toolIds,
+            game: nftMap[internalId].game,
+            amountPerDay: amountPerDay,
+            status: ICCAL.AssetStatus.INITIAL,
+            totalAmount: totalAmount,
+            internalId: internalId,
+            holder: _msgSender(),
+            borrower: address(0),
+            minPay: minPay,
+            token: token,
+            borrowTime: 0,
+            cycle: cycle
+        });
+
+        emit LogEditDepositAsset(internalId, amountPerDay, totalAmount, minPay, cycle, token);
     }
 
     function getInternalId() internal returns(uint) {

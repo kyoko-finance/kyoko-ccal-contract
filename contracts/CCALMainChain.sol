@@ -18,7 +18,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { ValidateLogic } from "./libs/ValidateLogic.sol";
 import { Errors } from "./libs/Errors.sol";
 
-
 import "./StorageLayer.sol";
 import "./BaseContract.sol";
 
@@ -84,96 +83,8 @@ contract CCALMainChain is
         vault = _vault;
     }
 
-    event LogDepositAsset(
-        address indexed game,
-        address indexed depositor,
-        uint indexed internalId
-    );
-    function deposit(
-        address game,
-        address token,
-        uint[] memory toolIds,
-        uint amountPerDay,
-        uint totalAmount,
-        uint minPay,
-        uint cycle
-    ) external {
-        ValidateLogic.checkDepositPara(game, toolIds, amountPerDay, totalAmount, minPay, cycle);
-        require(checkTokenInList(token), Errors.VL_TOKEN_NOT_SUPPORT);
-
-        uint internalId = getInternalId();
-
-        uint len = toolIds.length;
-        for (uint i = 0; i < len;) {
-            IERC721Upgradeable(game).safeTransferFrom(_msgSender(), address(this), toolIds[i]);
-            unchecked {
-                ++i;
-            }
-        }
-
-        nftMap[internalId] = ICCAL.DepositAsset({
-            depositTime: block.timestamp,
-            amountPerDay: amountPerDay,
-            status: ICCAL.AssetStatus.INITIAL,
-            totalAmount: totalAmount,
-            internalId: internalId,
-            holder: _msgSender(),
-            borrower: address(0),
-            toolIds: toolIds,
-            minPay: minPay,
-            token: token,
-            borrowTime: 0,
-            game: game,
-            cycle: cycle,
-            borrowIndex: 0
-        });
-
-        emit LogDepositAsset(game, _msgSender(), internalId);
-    }
-
-    event LogEditDepositAsset(uint indexed internalId);
-    function editDepositAsset(
-        uint _internalId,
-        address token,
-        uint amountPerDay,
-        uint totalAmount,
-        uint minPay,
-        uint cycle
-    ) external whenNotPaused {
-        ValidateLogic.checkEditPara(
-            _msgSender(),
-            amountPerDay,
-            totalAmount,
-            minPay,
-            cycle,
-            _internalId,
-            nftMap
-        );
-
-        require(checkTokenInList(token), Errors.VL_TOKEN_NOT_SUPPORT);
-
-        nftMap[_internalId] = ICCAL.DepositAsset({
-            borrowIndex: nftMap[_internalId].borrowIndex,
-            depositTime: nftMap[_internalId].depositTime,
-            toolIds: nftMap[_internalId].toolIds,
-            game: nftMap[_internalId].game,
-            amountPerDay: amountPerDay,
-            status: ICCAL.AssetStatus.INITIAL,
-            totalAmount: totalAmount,
-            internalId: _internalId,
-            holder: _msgSender(),
-            borrower: address(0),
-            minPay: minPay,
-            token: token,
-            borrowTime: 0,
-            cycle: cycle
-        });
-
-        emit LogEditDepositAsset(_internalId);
-    }
-
-    event LogBorrowAsset(address indexed borrower, uint indexed internalId);
-    function _borrow(address _borrower, uint _internalId) internal {
+    event LogBorrowAsset(address indexed borrower, uint indexed internalId, uint borrowIndex, bool useCredit, uint time);
+    function _borrow(address _borrower, uint _internalId, bool _useCredit) internal {
         ICCAL.DepositAsset storage asset = nftMap[_internalId];
 
         asset.borrowIndex += 1;
@@ -189,7 +100,7 @@ contract CCALMainChain is
             }
         }
 
-        emit LogBorrowAsset(_borrower, _internalId);
+        emit LogBorrowAsset(_borrower, _internalId, asset.borrowIndex, _useCredit, asset.borrowTime);
     }
 
     function borrowAsset(
@@ -235,7 +146,7 @@ contract CCALMainChain is
             token: _token
         });
 
-        _borrow(_msgSender(), _internalId);
+        _borrow(_msgSender(), _internalId, _useCredit);
     }
 
     function checkSuitCredit(
@@ -290,7 +201,8 @@ contract CCALMainChain is
                     _totalAmount,
                     _minPay,
                     _token,
-                    _cycle
+                    _cycle,
+                    _useCredit
                 )
             ),
             false,
@@ -324,7 +236,8 @@ contract CCALMainChain is
                     _totalAmount,
                     _minPay,
                     _token,
-                    _cycle
+                    _cycle,
+                    _useCredit
                 )
             ),                       // abi.encoded()'ed bytes
             payable(_msgSender()),   // refund address
@@ -421,7 +334,7 @@ contract CCALMainChain is
         emit LogWithdrawToken(remotes[_chainId], _chainId, _internalId, _borrowIdx, _msgSender(), item.amount);
     }
 
-    event LogLiquidation(uint internalId);
+    event LogLiquidation(uint internalId, uint time);
     function liquidate(uint internalId) internal {
 
         ICCAL.DepositAsset storage asset = nftMap[internalId];
@@ -439,7 +352,7 @@ contract CCALMainChain is
         }
 
         recordWithdraw(asset.holder, internalId, selfChainId, info.amount - toVault, info.token, asset.borrowIndex);
-        emit LogLiquidation(internalId);
+        emit LogLiquidation(internalId, block.timestamp);
     }
 
     // event MessageFailed(uint16 _srcChainId, bytes _srcAddress, uint64 _nonce, bytes _payload);

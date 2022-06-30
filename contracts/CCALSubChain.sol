@@ -19,103 +19,22 @@ import "./BaseContract.sol";
 import "./interface.sol";
 
 contract CCALSubChain is BaseContract {
-    mapping(uint => ICCAL.DepositAsset) public nftMap;
-
     uint16 public mainChainId;
 
     function initialize(
         address _endpoint,
         uint16 _selfChainId,
-        uint16 _mainChainId
+        uint16 _mainChainId,
+        address _currency,
+        uint8 _currencyDecimal
     ) public initializer {
         mainChainId = _mainChainId;
 
+        tokenInfos[_currency].active = true;
+        tokenInfos[_currency].decimals = _currencyDecimal;
+        tokenInfos[_currency].stable = true;
+
         BaseContract.initialize(_endpoint, _selfChainId);
-    }
-
-    event LogDepositAsset(
-        address indexed game,
-        address indexed depositor,
-        uint indexed internalId
-    );
-    function deposit(
-        address game,
-        address token,
-        uint[] memory toolIds,
-        uint amountPerDay,
-        uint totalAmount,
-        uint minPay,
-        uint cycle
-    ) external {
-        ValidateLogic.checkDepositPara(game, toolIds, amountPerDay, totalAmount, minPay, cycle);
-
-        uint internalId = getInternalId();
-
-        uint len = toolIds.length;
-        for (uint i = 0; i < len;) {
-            IERC721Upgradeable(game).safeTransferFrom(_msgSender(), address(this), toolIds[i]);
-            unchecked {
-                ++i;
-            }
-        }
-
-        nftMap[internalId] = ICCAL.DepositAsset({
-            depositTime: block.timestamp,
-            amountPerDay: amountPerDay,
-            status: ICCAL.AssetStatus.INITIAL,
-            totalAmount: totalAmount,
-            internalId: internalId,
-            holder: _msgSender(),
-            borrower: address(0),
-            toolIds: toolIds,
-            minPay: minPay,
-            token: token,
-            borrowTime: 0,
-            game: game,
-            cycle: cycle,
-            borrowIndex: 0
-        });
-
-        emit LogDepositAsset(game, _msgSender(), internalId);
-    }
-
-    event LogEditDepositAsset(uint indexed internalId);
-    function editDepositAsset(
-        uint internalId,
-        address token,
-        uint amountPerDay,
-        uint totalAmount,
-        uint minPay,
-        uint cycle
-    ) external whenNotPaused {
-        ValidateLogic.checkEditPara(
-            _msgSender(),
-            amountPerDay,
-            totalAmount,
-            minPay,
-            cycle,
-            internalId,
-            nftMap
-        );
-
-        nftMap[internalId] = ICCAL.DepositAsset({
-            borrowIndex: nftMap[internalId].borrowIndex,
-            depositTime: nftMap[internalId].depositTime,
-            toolIds: nftMap[internalId].toolIds,
-            game: nftMap[internalId].game,
-            amountPerDay: amountPerDay,
-            status: ICCAL.AssetStatus.INITIAL,
-            totalAmount: totalAmount,
-            internalId: internalId,
-            holder: _msgSender(),
-            borrower: address(0),
-            minPay: minPay,
-            token: token,
-            borrowTime: 0,
-            cycle: cycle
-        });
-
-        emit LogEditDepositAsset(internalId);
     }
 
     event LogRepayAsset(uint indexed internalId, uint interest, uint time);
@@ -175,8 +94,8 @@ contract CCALSubChain is BaseContract {
         emit LogRepayAsset(internalId, interest, block.timestamp);
     }
 
-    event LogBorrowAsset(address indexed borrower, uint indexed internalId);
-    function _borrow(address _borrower, uint internalId) internal {
+    event LogBorrowAsset(address indexed borrower, uint indexed internalId, uint borrowIndex, bool useCredit, uint time);
+    function _borrow(address _borrower, uint internalId, bool _useCredit) internal {
         ICCAL.DepositAsset storage asset = nftMap[internalId];
 
         asset.borrowIndex += 1;
@@ -192,7 +111,7 @@ contract CCALSubChain is BaseContract {
             }
         }
 
-        emit LogBorrowAsset(_borrower, internalId);
+        emit LogBorrowAsset(_borrower, internalId, asset.borrowIndex, _useCredit, asset.borrowTime);
     }
 
     event LogWithdrawAsset(uint indexed internalId);
@@ -229,7 +148,7 @@ contract CCALSubChain is BaseContract {
         }
     }
 
-    event LogLiquidation(uint internalId);
+    event LogLiquidation(uint internalId, uint time);
     function liquidate(uint internalId) internal {
 
         ICCAL.DepositAsset storage asset = nftMap[internalId];
@@ -264,7 +183,7 @@ contract CCALSubChain is BaseContract {
             adapterParams                      //  txParameters 
         );
 
-        emit LogLiquidation(internalId);
+        emit LogLiquidation(internalId, block.timestamp);
     }
 
     event MessageFailed(uint16 _srcChainId, bytes _srcAddress, uint64 _nonce, bytes _payload);
@@ -311,7 +230,7 @@ contract CCALSubChain is BaseContract {
 
     event BorrowFail(address indexed game, address indexed user, uint indexed id);
     function handleBorrowAsset(bytes memory _payload) internal {
-        (address user, uint id, uint _dp, uint _total, uint _min, address _token, uint _c) = abi.decode(_payload, (address, uint, uint, uint, uint, address, uint));
+        (address user, uint id, uint _dp, uint _total, uint _min, address _token, uint _c, bool _useCredit) = abi.decode(_payload, (address, uint, uint, uint, uint, address, uint, bool));
         ICCAL.DepositAsset memory asset = nftMap[id];
         bool canBorrow;
         // prevent depositor change data before borrower freeze token
@@ -330,7 +249,7 @@ contract CCALSubChain is BaseContract {
         if (!canBorrow) {
             emit BorrowFail(asset.game, user, id);
         } else {
-            _borrow(user, id);
+            _borrow(user, id, _useCredit);
         }
     }
 

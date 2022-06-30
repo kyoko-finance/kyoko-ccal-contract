@@ -18,9 +18,6 @@ contract StorageLayer {
 
     mapping(bytes32 => ICCAL.FreezeTokenInfo) public freezeMap;
 
-    // internalId => DepositAsset
-    mapping(uint => ICCAL.DepositAsset) public nftMap;
-
     // uint is wei
     mapping(address => uint) public creditUsed;
 
