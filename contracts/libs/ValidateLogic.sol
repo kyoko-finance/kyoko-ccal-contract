@@ -14,6 +14,7 @@ pragma solidity 0.8.7;
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 
 import "../interface.sol";
+import { Errors } from "./Errors.sol";
 
 library ValidateLogic {
     function checkDepositPara(
@@ -31,7 +32,7 @@ library ValidateLogic {
             amountPerDay > 0 &&
             totalAmount > 0 &&
             minPay > 0,
-            "bad para"
+            Errors.VL_DEPOSIT_PARAM_INVALID
         );
     }
 
@@ -50,13 +51,13 @@ library ValidateLogic {
             amountPerDay > 0 &&
             totalAmount > 0 &&
             minPay > 0,
-            "bad para"
+            Errors.VL_EDIT_PARAM_INVALID
         );
 
         require(
             asset.status == ICCAL.AssetStatus.INITIAL &&
             asset.holder == editor,
-            "bad para"
+            Errors.VL_EDIT_CONDITION_NOT_MATCH
         );
     }
 
@@ -91,11 +92,13 @@ library ValidateLogic {
         mapping(address => ICCAL.InterestInfo[]) storage pendingWithdraw
     ) public view returns(bool, uint) {
         ICCAL.InterestInfo[] memory list = pendingWithdraw[user];
-        if (list.length < 1) {
+        uint len = list.length;
+        if (len < 1) {
             return (false, 0);
         }
         uint index;
-        for (uint i; i < list.length; i++) {
+
+        for (uint i = 0; i < len;) {
             if (
                 list[i].borrowIndex == borrowIdx &&
                 list[i].chainId == chainId &&
@@ -103,6 +106,9 @@ library ValidateLogic {
             ) {
                 index = i;
                 break;
+            }
+            unchecked {
+                ++i;
             }
         }
         if (list[index].internalId != internalId) {
