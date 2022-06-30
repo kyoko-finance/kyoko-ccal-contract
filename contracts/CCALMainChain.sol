@@ -517,7 +517,7 @@ contract CCALMainChain is
 
         if (info.useCredit) {
             creditUsed[info.operator] = creditUsed[info.operator].sub(
-                _interest
+                (info.amount - _interest)
                     .mul(uint(1 ether))
                     .div(10**tokenInfos[info.token].decimals)
             );
