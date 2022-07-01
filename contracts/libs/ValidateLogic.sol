@@ -55,6 +55,7 @@ library ValidateLogic {
         );
 
         require(
+            block.timestamp < asset.depositTime + asset.cycle &&
             asset.status == ICCAL.AssetStatus.INITIAL &&
             asset.holder == editor,
             Errors.VL_EDIT_CONDITION_NOT_MATCH
