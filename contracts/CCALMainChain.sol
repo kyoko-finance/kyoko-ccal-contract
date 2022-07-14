@@ -158,7 +158,7 @@ contract CCALMainChain is
         (, bool inCCALSystem) = ICreditSystem(creditSystem).getState(user);
         if (inCCALSystem) {
             uint creditLine = ICreditSystem(creditSystem).getCCALCreditLine(user);
-            if (amount.mul(uint(1 ether)).div(10**decimals).add(creditUsed[user]) > creditLine) {
+            if (amount.mul(uint(1 ether)).div(10**decimals).add(creditUsed[user]) <= creditLine) {
                 canBorrow = true;
             }
         }
