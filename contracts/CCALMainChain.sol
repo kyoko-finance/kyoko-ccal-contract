@@ -246,7 +246,7 @@ contract CCALMainChain is
         );
     }
 
-    event LogRepayAsset(uint indexed internalId, uint interest, uint time);
+    event LogRepayAsset(uint indexed internalId, uint interest, uint borrowIndex, uint time);
     function repayAsset(uint _internalId) external {
         ICCAL.DepositAsset storage asset = nftMap[_internalId];
         require(asset.status == ICCAL.AssetStatus.BORROW && asset.borrower == _msgSender(), Errors.VL_REPAY_CONDITION_NOT_MATCH);
@@ -279,7 +279,7 @@ contract CCALMainChain is
 
         updateDataAfterRepay(asset.holder, _internalId, selfChainId, interest, asset.borrowIndex);
 
-        emit LogRepayAsset(_internalId, interest, block.timestamp);
+        emit LogRepayAsset(_internalId, interest, asset.borrowIndex, block.timestamp);
     }
 
     event LogWithdrawAsset(uint indexed internalId);
