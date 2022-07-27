@@ -37,7 +37,7 @@ contract CCALSubChain is BaseContract {
         BaseContract.initialize(_endpoint, _selfChainId);
     }
 
-    event LogRepayAsset(uint indexed internalId, uint interest, uint time);
+    event LogRepayAsset(uint indexed internalId, uint interest, uint borrowIndex, uint time);
     function repayAsset(uint internalId) external payable {
         ICCAL.DepositAsset storage asset = nftMap[internalId];
 
@@ -91,7 +91,7 @@ contract CCALSubChain is BaseContract {
             adapterParams                      //  txParameters 
         );
 
-        emit LogRepayAsset(internalId, interest, block.timestamp);
+        emit LogRepayAsset(internalId, interest, asset.borrowIndex, block.timestamp);
     }
 
     event LogBorrowAsset(address indexed borrower, uint indexed internalId, uint borrowIndex, bool useCredit, uint time);
