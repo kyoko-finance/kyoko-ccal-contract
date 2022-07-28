@@ -97,7 +97,6 @@ library ValidateLogic {
         if (len < 1) {
             return (false, 0);
         }
-        uint index;
 
         for (uint i = 0; i < len;) {
             if (
@@ -105,17 +104,14 @@ library ValidateLogic {
                 list[i].chainId == chainId &&
                 list[i].internalId == internalId 
             ) {
-                index = i;
-                break;
+                return (true, i);
             }
             unchecked {
                 ++i;
             }
         }
-        if (list[index].internalId != internalId) {
-            return (false, 0);
-        }
-        return (true, index);
+
+        return (false, 0);
     }
 
     function calcCost(uint amountPerDay, uint time, uint min, uint max) external pure returns(uint) {
