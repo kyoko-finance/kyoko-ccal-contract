@@ -89,6 +89,7 @@ contract BaseContract is
         address indexed game,
         address indexed depositor,
         uint indexed internalId,
+        uint[] toolIds,
         uint amountPerDay,
         uint totalAmount,
         uint minPay,
@@ -135,7 +136,9 @@ contract BaseContract is
             borrowIndex: 0
         });
 
-        emit LogDepositAsset(game, _msgSender(), internalId, amountPerDay, totalAmount, minPay, cycle, token, block.timestamp);
+        address _token = token;
+
+        emit LogDepositAsset(game, _msgSender(), internalId, toolIds, amountPerDay, totalAmount, minPay, cycle, _token, block.timestamp);
     }
 
     event LogEditDepositAsset(
