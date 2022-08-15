@@ -165,6 +165,41 @@ contract CCALMainChain is
         return canBorrow;
     }
 
+    function estimateCrossChainBorrowFees(
+        uint16 _dstChainId,
+        uint _internalId,
+        uint _amountPerDay,
+        uint _totalAmount,
+        uint _minPay,
+        address _token,
+        uint _cycle,
+        bool _useCredit
+    ) public view returns(uint) {
+        // get the fees we need to pay to LayerZero + Relayer to cover message delivery
+        // you will be refunded for extra gas paid
+        (uint messageFee, ) = layerZeroEndpoint.estimateFees(
+            _dstChainId,
+            address(this),
+            abi.encode(
+                ICCAL.Operation.BORROW,
+                abi.encode(
+                    _msgSender(),
+                    _internalId,
+                    _amountPerDay,
+                    _totalAmount,
+                    _minPay,
+                    _token,
+                    _cycle,
+                    _useCredit
+                )
+            ),
+            false,
+            abi.encodePacked(VERSION, GAS_FOR_DEST_LZ_RECEIVE)
+        );
+
+        return messageFee;
+    }
+
     function borrowOtherChainAsset(
         uint16 _dstChainId,
         uint _internalId,
@@ -187,26 +222,15 @@ contract CCALMainChain is
             token: _token
         });
 
-        // get the fees we need to pay to LayerZero + Relayer to cover message delivery
-        // you will be refunded for extra gas paid
-        (uint messageFee, ) = layerZeroEndpoint.estimateFees(
+        uint messageFee = estimateCrossChainBorrowFees(
             _dstChainId,
-            address(this),
-            abi.encode(
-                ICCAL.Operation.BORROW,
-                abi.encode(
-                    _msgSender(),
-                    _internalId,
-                    _amountPerDay,
-                    _totalAmount,
-                    _minPay,
-                    _token,
-                    _cycle,
-                    _useCredit
-                )
-            ),
-            false,
-            abi.encodePacked(VERSION, GAS_FOR_DEST_LZ_RECEIVE)
+            _internalId,
+            _amountPerDay,
+            _totalAmount,
+            _minPay,
+            _token,
+            _cycle,
+            _useCredit
         );
 
         require(msg.value >= messageFee, Errors.LZ_GAS_TOO_LOW);
@@ -314,13 +338,7 @@ contract CCALMainChain is
 
     event LogWithdrawToken(bytes _address, uint16 chainId, uint indexed internalId, uint borrowIdx, address indexed user, uint amount);
     function withdrawToken(uint16 _chainId, uint _internalId, uint _borrowIdx) external {
-        (bool canWithdraw, uint index) = ValidateLogic.checkWithdrawTokenPara(
-            _msgSender(),
-            _chainId,
-            _internalId,
-            _borrowIdx,
-            pendingWithdraw
-        );
+        (bool canWithdraw, uint index) = findTokenPara(_chainId, _internalId, _borrowIdx);
         require(canWithdraw, Errors.VL_WITHDRAW_TOKEN_PARAM_NOT_MATCH);
         ICCAL.InterestInfo[] storage list = pendingWithdraw[_msgSender()];
 
@@ -332,6 +350,17 @@ contract CCALMainChain is
         SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(item.token), _msgSender(), item.amount);
 
         emit LogWithdrawToken(remotes[_chainId], _chainId, _internalId, _borrowIdx, _msgSender(), item.amount);
+    }
+
+    function findTokenPara(uint16 _chainId, uint _internalId, uint _borrowIdx) public view returns(bool, uint) {
+        (bool canWithdraw, uint index) = ValidateLogic.checkWithdrawTokenPara(
+            _msgSender(),
+            _chainId,
+            _internalId,
+            _borrowIdx,
+            pendingWithdraw
+        );
+        return (canWithdraw, index);
     }
 
     event LogLiquidation(uint internalId, uint time);
@@ -535,9 +564,5 @@ contract CCALMainChain is
     function withdrawETH() external onlyOwner returns(bool) {
         (bool success, ) = _msgSender().call{value: address(this).balance}(new bytes(0));
         return success;
-    }
-
-    function getToolIds(uint internalId) external view returns(uint[] memory toolIds) {
-        toolIds = nftMap[internalId].toolIds;
     }
 }

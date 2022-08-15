@@ -94,6 +94,37 @@ contract CCALSubChain is BaseContract {
         emit LogRepayAsset(internalId, interest, asset.borrowIndex, block.timestamp);
     }
 
+    function estimateCrossChainRepayAssetFees(uint internalId) public view returns(uint) {
+        ICCAL.DepositAsset storage asset = nftMap[internalId];
+
+        uint interest = ValidateLogic.calcCost(
+            asset.amountPerDay,
+            block.timestamp - asset.borrowTime,
+            asset.minPay,
+            asset.totalAmount
+        );
+
+        // get the fees we need to pay to LayerZero + Relayer to cover message delivery
+        // you will be refunded for extra gas paid
+        (uint messageFee, ) = layerZeroEndpoint.estimateFees(
+            mainChainId,
+            address(this),
+            abi.encode(
+                ICCAL.Operation.REPAY,
+                abi.encode(
+                    asset.holder,
+                    internalId,
+                    selfChainId,
+                    interest,
+                    asset.borrowIndex
+                )
+            ),
+            false,
+            abi.encodePacked(VERSION, GAS_FOR_DEST_LZ_RECEIVE) // encode adapterParams to specify more gas for the destination
+        );
+        return messageFee;
+    }
+
     event LogBorrowAsset(address indexed borrower, uint indexed internalId, uint borrowIndex, bool useCredit, uint time);
     function _borrow(address _borrower, uint internalId, bool _useCredit) internal {
         ICCAL.DepositAsset storage asset = nftMap[internalId];
@@ -186,6 +217,28 @@ contract CCALSubChain is BaseContract {
         emit LogLiquidation(internalId, block.timestamp);
     }
 
+    function estimateCrossChainLiquidateFees(uint internalId) public view returns(uint) {
+        ICCAL.DepositAsset storage asset = nftMap[internalId];
+        // get the fees we need to pay to LayerZero + Relayer to cover message delivery
+        // you will be refunded for extra gas paid
+        (uint messageFee, ) = layerZeroEndpoint.estimateFees(
+            mainChainId,
+            address(this),
+            abi.encode(
+                ICCAL.Operation.LIQUIDATE,
+                abi.encode(
+                    asset.holder,
+                    selfChainId,
+                    internalId,
+                    asset.borrowIndex
+                )
+            ),
+            false,
+            abi.encodePacked(VERSION, GAS_FOR_DEST_LZ_RECEIVE)
+        );
+        return messageFee;
+    }
+
     event MessageFailed(uint16 _srcChainId, bytes _srcAddress, uint64 _nonce, bytes _payload);
     function lzReceive(
         uint16 _srcChainId,
@@ -253,7 +306,4 @@ contract CCALSubChain is BaseContract {
         }
     }
 
-    function getToolIds(uint internalId) external view returns(uint[] memory toolIds) {
-        toolIds = nftMap[internalId].toolIds;
-    }
 }
