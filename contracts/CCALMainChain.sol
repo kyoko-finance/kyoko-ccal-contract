@@ -400,7 +400,6 @@ contract CCALMainChain is
         );
 
         _LzReceive(_payload);
-        // onLzReceive(_srcChainId, _srcAddress, _nonce, _payload);
 
         // try this.onLzReceive(_srcChainId, _srcAddress, _nonce, _payload) {
             // do nothing
@@ -410,7 +409,7 @@ contract CCALMainChain is
         // }
     }
 
-    // function onLzReceive(uint16 _srcChainId, bytes memory _srcAddress, uint64 _nonce, bytes memory _payload) internal {
+    // function onLzReceive(uint16 _srcChainId, bytes memory _srcAddress, uint64 _nonce, bytes memory _payload) public {
         // only internal transaction
         // require(msg.sender == address(this), "only Bridge.");
 
@@ -479,19 +478,21 @@ contract CCALMainChain is
         ICCAL.FreezeTokenInfo memory info = freezeMap[freeKey];
         delete freezeMap[freeKey];
 
-        uint toVault = _interest * fee / BASE_FEE;
+        uint interest = _interest > info.amount ? info.amount : _interest; // 0.04k
 
-        recordWithdraw(assetHolder, _internalId, _chainId, _interest - toVault, info.token, _borrowIndex);
+        uint toVault = interest * fee / BASE_FEE;
+
+        recordWithdraw(assetHolder, _internalId, _chainId, interest - toVault, info.token, _borrowIndex);
 
         if (info.useCredit) {
             creditUsed[info.operator] = creditUsed[info.operator].sub(
-                (info.amount - _interest)
+                (info.amount - interest)
                     .mul(uint(1 ether))
                     .div(10**tokenInfos[info.token].decimals)
             );
         } else {
             SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(info.token), vault, toVault);
-            recordWithdraw(info.operator, _internalId, _chainId, info.amount - _interest, info.token, _borrowIndex);
+            recordWithdraw(info.operator, _internalId, _chainId, info.amount - interest, info.token, _borrowIndex);
         }
     }
 

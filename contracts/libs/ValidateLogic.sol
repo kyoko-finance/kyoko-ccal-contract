@@ -31,7 +31,8 @@ library ValidateLogic {
             toolIds.length > 0 &&
             amountPerDay > 0 &&
             totalAmount > 0 &&
-            minPay > 0,
+            minPay > 0 &&
+            totalAmount > minPay,
             Errors.VL_DEPOSIT_PARAM_INVALID
         );
     }
@@ -50,7 +51,8 @@ library ValidateLogic {
             (cycle > 0 && cycle <= 365 days) &&
             amountPerDay > 0 &&
             totalAmount > 0 &&
-            minPay > 0,
+            minPay > 0 &&
+            totalAmount > minPay,
             Errors.VL_EDIT_PARAM_INVALID
         );
 
