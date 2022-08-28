@@ -2,6 +2,7 @@
 pragma solidity 0.8.7;
 
 /**
+ *  - L = Logic
  *  - VL = ValidationLogic
  *  - P = Privilege
  *  - SET = Configure
@@ -37,4 +38,7 @@ library Errors {
   string public constant LZ_BAD_SENDER = "62";
   string public constant LZ_BAD_REMOTE_ADDR = "63";
   string public constant LZ_BACK_FEE_FAILED = "64";
+  string public constant LZ_ONLY_BRIDGE = "65";
+
+  string public constant L_INVALID_REQ = "80";
 }

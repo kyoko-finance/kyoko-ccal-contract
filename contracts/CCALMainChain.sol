@@ -18,6 +18,8 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { ValidateLogic } from "./libs/ValidateLogic.sol";
 import { Errors } from "./libs/Errors.sol";
 
+import { Help } from "./libs/Help.sol";
+
 import "./StorageLayer.sol";
 import "./BaseContract.sol";
 
@@ -38,14 +40,6 @@ contract CCALMainChain is
     address public vault;
 
     ICreditSystem public creditSystem;
-
-    modifier onlyAuditor() {
-        require(
-            hasRole(AUDITOR_ROLE, _msgSender()),
-            Errors.P_ONLY_AUDITOR
-        );
-        _;
-    }
 
     function initialize(
         ICreditSystem _creditSystem,
@@ -111,7 +105,7 @@ contract CCALMainChain is
         uint _cycle,
         bool _useCredit
     ) external {
-        bytes32 freeKey = this.getFreezeKey(_internalId, selfChainId);
+        bytes32 freeKey = Help.getKey(_internalId, selfChainId);
         require(freezeMap[freeKey].operator == address(0), Errors.VL_BORROW_ALREADY_FREEZE);
 
         require(ValidateLogic.checkBorrowPara(
@@ -210,7 +204,7 @@ contract CCALMainChain is
         uint _cycle,
         bool _useCredit
     ) external payable {
-        bytes32 freeKey = this.getFreezeKey(_internalId, _dstChainId);
+        bytes32 freeKey = Help.getKey(_internalId, _dstChainId);
         require(freezeMap[freeKey].operator == address(0), Errors.VL_BORROW_ALREADY_FREEZE);
 
         require(checkTokenInList(_token), Errors.VL_TOKEN_NOT_SUPPORT);
@@ -338,7 +332,13 @@ contract CCALMainChain is
 
     event LogWithdrawToken(bytes _address, uint16 chainId, uint indexed internalId, uint borrowIdx, address indexed user, uint amount);
     function withdrawToken(uint16 _chainId, uint _internalId, uint _borrowIdx) external {
-        (bool canWithdraw, uint index) = findTokenPara(_chainId, _internalId, _borrowIdx);
+        (bool canWithdraw, uint index) = ValidateLogic.checkWithdrawTokenPara(
+            _msgSender(),
+            _chainId,
+            _internalId,
+            _borrowIdx,
+            pendingWithdraw
+        );
         require(canWithdraw, Errors.VL_WITHDRAW_TOKEN_PARAM_NOT_MATCH);
         ICCAL.InterestInfo[] storage list = pendingWithdraw[_msgSender()];
 
@@ -352,17 +352,6 @@ contract CCALMainChain is
         emit LogWithdrawToken(remotes[_chainId], _chainId, _internalId, _borrowIdx, _msgSender(), item.amount);
     }
 
-    function findTokenPara(uint16 _chainId, uint _internalId, uint _borrowIdx) public view returns(bool, uint) {
-        (bool canWithdraw, uint index) = ValidateLogic.checkWithdrawTokenPara(
-            _msgSender(),
-            _chainId,
-            _internalId,
-            _borrowIdx,
-            pendingWithdraw
-        );
-        return (canWithdraw, index);
-    }
-
     event LogLiquidation(uint internalId, uint time);
     function liquidate(uint internalId) internal {
 
@@ -370,7 +359,7 @@ contract CCALMainChain is
 
         asset.status = ICCAL.AssetStatus.LIQUIDATE;
 
-        bytes32 freeKey = this.getFreezeKey(internalId, selfChainId);
+        bytes32 freeKey = Help.getKey(internalId, selfChainId);
 
         ICCAL.FreezeTokenInfo memory info = freezeMap[freeKey];
         delete freezeMap[freeKey];
@@ -384,11 +373,11 @@ contract CCALMainChain is
         emit LogLiquidation(internalId, block.timestamp);
     }
 
-    // event MessageFailed(uint16 _srcChainId, bytes _srcAddress, uint64 _nonce, bytes _payload);
+    event MessageFailed(uint16 _srcChainId, bytes _srcAddress, uint64 _nonce, bytes _payload);
     function lzReceive(
         uint16 _srcChainId,
         bytes memory _srcAddress,
-        uint64,
+        uint64 _nonce,
         bytes memory _payload
     ) external override {
         // boilerplate: only allow this endpiont to be the caller of lzReceive!
@@ -399,35 +388,23 @@ contract CCALMainChain is
             Errors.LZ_BAD_REMOTE_ADDR
         );
 
-        _LzReceive(_payload);
-
-        // try this.onLzReceive(_srcChainId, _srcAddress, _nonce, _payload) {
+        try this._LzReceive(_payload) {
             // do nothing
-        // } catch {
+        } catch {
             // error / exception
-            // emit MessageFailed(_srcChainId, _srcAddress, _nonce, _payload);
-        // }
+            emit MessageFailed(_srcChainId, _srcAddress, _nonce, _payload);
+        }
     }
 
-    // function onLzReceive(uint16 _srcChainId, bytes memory _srcAddress, uint64 _nonce, bytes memory _payload) public {
-        // only internal transaction
-        // require(msg.sender == address(this), "only Bridge.");
-
-        // handle incoming message
-        // _LzReceive(_srcChainId, _srcAddress, _nonce, _payload);
-    // }
-
-    // event UnknownOp(bytes payload);
-    function _LzReceive(bytes memory _payload) internal {
-    // function _LzReceive(uint16, bytes memory, uint64, bytes memory _payload) internal {
+    function _LzReceive(bytes memory _payload) external {
+        require(msg.sender == address(this), Errors.LZ_ONLY_BRIDGE);
         // decode
         (ICCAL.Operation op, bytes memory _other) = abi.decode(_payload, (ICCAL.Operation, bytes));
         if (op == ICCAL.Operation.REPAY) {
             handleRepayAsset(_other);
-        } else if (op == ICCAL.Operation.LIQUIDATE) {
+        }
+        if (op == ICCAL.Operation.LIQUIDATE) {
             handleLiquidate(_other);
-        } else {
-            // emit UnknownOp(_payload);
         }
     }
 
@@ -473,12 +450,12 @@ contract CCALMainChain is
         uint _interest,
         uint _borrowIndex
     ) internal {
-        bytes32 freeKey = this.getFreezeKey(_internalId, _chainId);
+        bytes32 freeKey = Help.getKey(_internalId, _chainId);
 
         ICCAL.FreezeTokenInfo memory info = freezeMap[freeKey];
         delete freezeMap[freeKey];
 
-        uint interest = _interest > info.amount ? info.amount : _interest; // 0.04k
+        uint interest = _interest > info.amount ? info.amount : _interest;
 
         uint toVault = interest * fee / BASE_FEE;
 
@@ -510,7 +487,7 @@ contract CCALMainChain is
             (address, uint16, uint, uint)
         );
 
-        bytes32 freeKey = this.getFreezeKey(_internalId, _chainId);
+        bytes32 freeKey = Help.getKey(_internalId, _chainId);
 
         ICCAL.FreezeTokenInfo memory info = freezeMap[freeKey];
 
@@ -549,9 +526,14 @@ contract CCALMainChain is
     function releaseToken(
         uint internalId,
         uint16 _chainId
-    ) external onlyAuditor {
+    ) external {
 
-        bytes32 freeKey = this.getFreezeKey(internalId, _chainId);
+        require(
+            hasRole(AUDITOR_ROLE, _msgSender()),
+            Errors.P_ONLY_AUDITOR
+        );
+
+        bytes32 freeKey = Help.getKey(internalId, _chainId);
 
         ICCAL.FreezeTokenInfo memory freezeInfo = freezeMap[freeKey];
 

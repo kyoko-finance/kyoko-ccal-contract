@@ -243,33 +243,32 @@ contract BaseContract is
         layerZeroEndpoint.forceResumeReceive(_srcChainId, _srcAddress);
     }
 
-    function getFreezeKey(
-        uint _id,
-        uint16 _chainId
-    ) external pure returns(bytes32) {
-        return keccak256(abi.encode(_id, _chainId));
+    function toggleTokens(
+        address token,
+        uint8 decimals,
+        bool stable,
+        bool active
+    ) external onlyOwner returns(bool) {
+        if (active) {
+            tokenInfos[token].active = true;
+            tokenInfos[token].decimals = decimals;
+            tokenInfos[token].stable = stable;
+            return true;
+        }
+        delete tokenInfos[token];
+        return true;
     }
-
-    function addTokens(address _token, uint8 _decimals, bool stable) external onlyOwner {
-        tokenInfos[_token].active = true;
-        tokenInfos[_token].decimals = _decimals;
-        tokenInfos[_token].stable = stable;
-    }
-
-    function removeTokens(address _token) external onlyOwner {
-        delete tokenInfos[_token];
-    }
-
+    
     function checkTokenInList(address _token) internal view returns(bool) {
         return tokenInfos[_token].active;
     }
 
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
+    function togglePause(bool needPause) external onlyOwner {
+        if (needPause) {
+            _pause();
+        } else {
+            _unpause();
+        }
     }
 
     fallback() external payable {}
