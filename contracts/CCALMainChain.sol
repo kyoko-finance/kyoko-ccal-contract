@@ -18,8 +18,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { ValidateLogic } from "./libs/ValidateLogic.sol";
 import { Errors } from "./libs/Errors.sol";
 
-import { Help } from "./libs/Help.sol";
-
 import "./StorageLayer.sol";
 import "./BaseContract.sol";
 
@@ -29,8 +27,6 @@ contract CCALMainChain is
     BaseContract,
     StorageLayer
 {
-    using SafeMathUpgradeable for uint;
-
     uint16 public constant BASE_FEE = 10000;
 
     bytes32 public constant AUDITOR_ROLE = keccak256("AUDITOR_ROLE");
@@ -41,6 +37,11 @@ contract CCALMainChain is
 
     ICreditSystem public creditSystem;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {  
+        _disableInitializers();  
+    }
+
     function initialize(
         ICreditSystem _creditSystem,
         address _vault,
@@ -49,37 +50,31 @@ contract CCALMainChain is
         address _endPoint,
         address _currency,
         uint8 _currencyDecimal
-    ) public initializer {
-        fee              = _fee;
-        vault            = _vault;
-        creditSystem     = _creditSystem;
-        // currency         = _currency;
-        // currencyDecimals = _currencyDecimal; // currency for creditSystem 
-
-        tokenInfos[_currency].active = true;
-        tokenInfos[_currency].decimals = _currencyDecimal;
-        tokenInfos[_currency].stable = true;
-
+    ) external initializer {
         BaseContract.initialize(_endPoint, _selfChainId);
+        setFee(_fee);
+        setVault(_vault);
+        setCreditSystem(_creditSystem);
+        toggleTokens(_currency, _currencyDecimal, true, true);
     }
 
-    function setCreditSystem(ICreditSystem _creditSystem) external onlyOwner {
+    function setCreditSystem(ICreditSystem _creditSystem) public onlyOwner {
         creditSystem = _creditSystem;
     }
 
-    function setFee(uint _fee) external onlyOwner {
-        require(fee <= 1000, Errors.SET_FEE_TOO_LARGE);
+    function setFee(uint _fee) public onlyOwner {
+        require(_fee <= 1000, Errors.SET_FEE_TOO_LARGE);
         fee = _fee;
     }
 
-    function setVault(address _vault) external onlyOwner {
+    function setVault(address _vault) public onlyOwner {
         require(_vault != address(0), Errors.SET_VAULT_ADDRESS_INVALID);
         vault = _vault;
     }
 
     event LogBorrowAsset(address indexed borrower, uint indexed internalId, uint borrowIndex, bool useCredit, uint time);
-    function _borrow(address _borrower, uint _internalId, bool _useCredit) internal {
-        ICCAL.DepositAsset storage asset = nftMap[_internalId];
+    function _borrow(address _borrower, uint internalId, bool _useCredit) internal {
+        ICCAL.DepositAsset storage asset = nftMap[internalId];
 
         asset.borrowIndex += 1;
         asset.borrower = _borrower;
@@ -94,22 +89,22 @@ contract CCALMainChain is
             }
         }
 
-        emit LogBorrowAsset(_borrower, _internalId, asset.borrowIndex, _useCredit, asset.borrowTime);
+        emit LogBorrowAsset(_borrower, internalId, asset.borrowIndex, _useCredit, asset.borrowTime);
     }
 
     function borrowAsset(
-        uint _internalId,
+        uint internalId,
         uint _amountPerDay,
         uint _totalAmount,
         uint _minPay,
         uint _cycle,
         bool _useCredit
     ) external {
-        bytes32 freeKey = Help.getKey(_internalId, selfChainId);
+        bytes32 freeKey = keccak256(abi.encode(internalId, selfChainId));
         require(freezeMap[freeKey].operator == address(0), Errors.VL_BORROW_ALREADY_FREEZE);
 
         require(ValidateLogic.checkBorrowPara(
-            _internalId,
+            internalId,
             _amountPerDay,
             _totalAmount,
             _minPay,
@@ -117,20 +112,14 @@ contract CCALMainChain is
             nftMap
         ), Errors.VL_BORROW_PARAM_NOT_MATCH);
 
-        address _token = nftMap[_internalId].token;
-        uint amount = nftMap[_internalId].totalAmount;
+        address _token = nftMap[internalId].token;
+        uint amount = nftMap[internalId].totalAmount;
 
-        if (!_useCredit) {
-            SafeERC20Upgradeable.safeTransferFrom(IERC20Upgradeable(_token), _msgSender(), address(this), amount);
-        } else {
-            require(tokenInfos[_token].stable == true, Errors.VL_TOKEN_NOT_MATCH_CREDIT);
+        if (_useCredit) {
+            require(tokenInfos[_token].stable, Errors.VL_TOKEN_NOT_MATCH_CREDIT);
             uint8 decimals = tokenInfos[_token].decimals;
             require(this.checkSuitCredit(_msgSender(), amount, decimals), Errors.VL_CREDIT_NOT_VALID);
-            creditUsed[_msgSender()] = creditUsed[_msgSender()].add(
-                amount
-                    .mul(uint(1 ether))
-                    .div(10**decimals)
-            );
+            creditUsed[_msgSender()] = creditUsed[_msgSender()] + (amount * (uint(1 ether)) / (10**decimals));
         }
 
         freezeMap[freeKey] = ICCAL.FreezeTokenInfo({
@@ -140,7 +129,11 @@ contract CCALMainChain is
             token: _token
         });
 
-        _borrow(_msgSender(), _internalId, _useCredit);
+        if (!_useCredit) {
+            SafeERC20Upgradeable.safeTransferFrom(IERC20Upgradeable(_token), _msgSender(), address(this), amount);
+        }
+
+        _borrow(_msgSender(), internalId, _useCredit);
     }
 
     function checkSuitCredit(
@@ -152,7 +145,7 @@ contract CCALMainChain is
         (, bool inCCALSystem) = ICreditSystem(creditSystem).getState(user);
         if (inCCALSystem) {
             uint creditLine = ICreditSystem(creditSystem).getCCALCreditLine(user);
-            if (amount.mul(uint(1 ether)).div(10**decimals).add(creditUsed[user]) <= creditLine) {
+            if (amount * (uint(1 ether)) / (10**decimals) + creditUsed[user] <= creditLine) {
                 canBorrow = true;
             }
         }
@@ -161,7 +154,7 @@ contract CCALMainChain is
 
     function estimateCrossChainBorrowFees(
         uint16 _dstChainId,
-        uint _internalId,
+        uint internalId,
         uint _amountPerDay,
         uint _totalAmount,
         uint _minPay,
@@ -178,7 +171,7 @@ contract CCALMainChain is
                 ICCAL.Operation.BORROW,
                 abi.encode(
                     _msgSender(),
-                    _internalId,
+                    internalId,
                     _amountPerDay,
                     _totalAmount,
                     _minPay,
@@ -196,7 +189,7 @@ contract CCALMainChain is
 
     function borrowOtherChainAsset(
         uint16 _dstChainId,
-        uint _internalId,
+        uint internalId,
         uint _amountPerDay,
         uint _totalAmount,
         uint _minPay,
@@ -204,21 +197,15 @@ contract CCALMainChain is
         uint _cycle,
         bool _useCredit
     ) external payable {
-        bytes32 freeKey = Help.getKey(_internalId, _dstChainId);
+        require(selfChainId != _dstChainId, Errors.LZ_NOT_OTHER_CHAIN);
+        bytes32 freeKey = keccak256(abi.encode(internalId, _dstChainId));
         require(freezeMap[freeKey].operator == address(0), Errors.VL_BORROW_ALREADY_FREEZE);
 
         require(checkTokenInList(_token), Errors.VL_TOKEN_NOT_SUPPORT);
 
-        freezeMap[freeKey] = ICCAL.FreezeTokenInfo({
-            amount: _totalAmount,
-            useCredit: _useCredit,
-            operator: _msgSender(),
-            token: _token
-        });
-
         uint messageFee = estimateCrossChainBorrowFees(
             _dstChainId,
-            _internalId,
+            internalId,
             _amountPerDay,
             _totalAmount,
             _minPay,
@@ -229,17 +216,22 @@ contract CCALMainChain is
 
         require(msg.value >= messageFee, Errors.LZ_GAS_TOO_LOW);
 
-        if (!_useCredit) {
-            SafeERC20Upgradeable.safeTransferFrom(IERC20Upgradeable(_token), _msgSender(), address(this), _totalAmount);
-        } else {
-            require(tokenInfos[_token].stable == true, Errors.VL_TOKEN_NOT_MATCH_CREDIT);
+        if (_useCredit) {
+            require(tokenInfos[_token].stable, Errors.VL_TOKEN_NOT_MATCH_CREDIT);
             uint8 decimals = tokenInfos[_token].decimals;
             require(this.checkSuitCredit(_msgSender(), _totalAmount, decimals), Errors.VL_CREDIT_NOT_VALID);
-            creditUsed[_msgSender()] = creditUsed[_msgSender()].add(
-                _totalAmount
-                    .mul(uint(1 ether))
-                    .div(10**decimals)
-            );
+            creditUsed[_msgSender()] = creditUsed[_msgSender()] + (_totalAmount * (uint(1 ether)) / (10**decimals));
+        }
+
+        freezeMap[freeKey] = ICCAL.FreezeTokenInfo({
+            amount: _totalAmount,
+            useCredit: _useCredit,
+            operator: _msgSender(),
+            token: _token
+        });
+
+        if (!_useCredit) {
+            SafeERC20Upgradeable.safeTransferFrom(IERC20Upgradeable(_token), _msgSender(), address(this), _totalAmount);
         }
 
         layerZeroEndpoint.send{value: msg.value}(
@@ -249,7 +241,7 @@ contract CCALMainChain is
                 ICCAL.Operation.BORROW,
                 abi.encode(
                     _msgSender(),
-                    _internalId,
+                    internalId,
                     _amountPerDay,
                     _totalAmount,
                     _minPay,
@@ -265,9 +257,11 @@ contract CCALMainChain is
     }
 
     event LogRepayAsset(uint indexed internalId, uint interest, uint borrowIndex, uint time);
-    function repayAsset(uint _internalId) external {
-        ICCAL.DepositAsset storage asset = nftMap[_internalId];
+    function repayAsset(uint internalId) external {
+        ICCAL.DepositAsset storage asset = nftMap[internalId];
         require(asset.status == ICCAL.AssetStatus.BORROW && asset.borrower == _msgSender(), Errors.VL_REPAY_CONDITION_NOT_MATCH);
+
+        _afterRepay(internalId);
 
         uint len = asset.toolIds.length;
         for (uint idx = 0; idx < len;) {
@@ -277,12 +271,10 @@ contract CCALMainChain is
                 ++idx;
             }
         }
-
-        _afterRepay(_internalId);
     }
 
-    function _afterRepay(uint _internalId) internal {
-        ICCAL.DepositAsset storage asset = nftMap[_internalId];
+    function _afterRepay(uint internalId) internal {
+        ICCAL.DepositAsset storage asset = nftMap[internalId];
 
         uint interest = ValidateLogic.calcCost(
             asset.amountPerDay,
@@ -295,9 +287,9 @@ contract CCALMainChain is
         asset.borrower = address(0);
         asset.status = ICCAL.AssetStatus.INITIAL;
 
-        updateDataAfterRepay(asset.holder, _internalId, selfChainId, interest, asset.borrowIndex);
+        updateDataAfterRepay(asset.holder, internalId, selfChainId, interest, asset.borrowIndex);
 
-        emit LogRepayAsset(_internalId, interest, asset.borrowIndex, block.timestamp);
+        emit LogRepayAsset(internalId, interest, asset.borrowIndex, block.timestamp);
     }
 
     event LogWithdrawAsset(uint indexed internalId);
@@ -331,11 +323,11 @@ contract CCALMainChain is
     }
 
     event LogWithdrawToken(bytes _address, uint16 chainId, uint indexed internalId, uint borrowIdx, address indexed user, uint amount);
-    function withdrawToken(uint16 _chainId, uint _internalId, uint _borrowIdx) external {
+    function withdrawToken(uint16 _chainId, uint internalId, uint _borrowIdx) external {
         (bool canWithdraw, uint index) = ValidateLogic.checkWithdrawTokenPara(
             _msgSender(),
             _chainId,
-            _internalId,
+            internalId,
             _borrowIdx,
             pendingWithdraw
         );
@@ -349,7 +341,7 @@ contract CCALMainChain is
 
         SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(item.token), _msgSender(), item.amount);
 
-        emit LogWithdrawToken(remotes[_chainId], _chainId, _internalId, _borrowIdx, _msgSender(), item.amount);
+        emit LogWithdrawToken(remotes[_chainId], _chainId, internalId, _borrowIdx, _msgSender(), item.amount);
     }
 
     event LogLiquidation(uint internalId, uint time);
@@ -359,17 +351,16 @@ contract CCALMainChain is
 
         asset.status = ICCAL.AssetStatus.LIQUIDATE;
 
-        bytes32 freeKey = Help.getKey(internalId, selfChainId);
+        bytes32 freeKey = keccak256(abi.encode(internalId, selfChainId));
 
         ICCAL.FreezeTokenInfo memory info = freezeMap[freeKey];
         delete freezeMap[freeKey];
 
         uint toVault = info.amount * fee / BASE_FEE;
+        recordWithdraw(asset.holder, internalId, selfChainId, info.amount - toVault, info.token, asset.borrowIndex);
         if (!info.useCredit) {
             SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(info.token), vault, toVault);
         }
-
-        recordWithdraw(asset.holder, internalId, selfChainId, info.amount - toVault, info.token, asset.borrowIndex);
         emit LogLiquidation(internalId, block.timestamp);
     }
 
@@ -431,7 +422,7 @@ contract CCALMainChain is
     function handleRepayAsset(bytes memory _payload) internal {
         (
             address _holder,
-            uint _internalId,
+            uint internalId,
             uint16 _chainId,
             uint _interest,
             uint _borrowIndex
@@ -440,17 +431,17 @@ contract CCALMainChain is
             (address, uint, uint16, uint, uint)
         );
 
-        updateDataAfterRepay(_holder, _internalId, _chainId, _interest, _borrowIndex);
+        updateDataAfterRepay(_holder, internalId, _chainId, _interest, _borrowIndex);
     }
 
     function updateDataAfterRepay(
         address assetHolder,
-        uint _internalId,
+        uint internalId,
         uint16 _chainId,
         uint _interest,
         uint _borrowIndex
     ) internal {
-        bytes32 freeKey = Help.getKey(_internalId, _chainId);
+        bytes32 freeKey = keccak256(abi.encode(internalId, _chainId));
 
         ICCAL.FreezeTokenInfo memory info = freezeMap[freeKey];
         delete freezeMap[freeKey];
@@ -459,17 +450,13 @@ contract CCALMainChain is
 
         uint toVault = interest * fee / BASE_FEE;
 
-        recordWithdraw(assetHolder, _internalId, _chainId, interest - toVault, info.token, _borrowIndex);
+        recordWithdraw(assetHolder, internalId, _chainId, interest - toVault, info.token, _borrowIndex);
 
         if (info.useCredit) {
-            creditUsed[info.operator] = creditUsed[info.operator].sub(
-                (info.amount - interest)
-                    .mul(uint(1 ether))
-                    .div(10**tokenInfos[info.token].decimals)
-            );
+            creditUsed[info.operator] = creditUsed[info.operator] - ((info.amount - interest) * (uint(1 ether)) / (10**tokenInfos[info.token].decimals));
         } else {
+            recordWithdraw(info.operator, internalId, _chainId, info.amount - interest, info.token, _borrowIndex);
             SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(info.token), vault, toVault);
-            recordWithdraw(info.operator, _internalId, _chainId, info.amount - interest, info.token, _borrowIndex);
         }
     }
 
@@ -480,25 +467,26 @@ contract CCALMainChain is
         (
             address _holder,
             uint16 _chainId,
-            uint _internalId,
+            uint internalId,
             uint _borrowIndex
         ) = abi.decode(
             _payload,
             (address, uint16, uint, uint)
         );
 
-        bytes32 freeKey = Help.getKey(_internalId, _chainId);
+        bytes32 freeKey = keccak256(abi.encode(internalId, _chainId));
 
         ICCAL.FreezeTokenInfo memory info = freezeMap[freeKey];
 
         delete freezeMap[freeKey];
 
         uint toVault = info.amount * fee / BASE_FEE;
+
+        recordWithdraw(_holder, internalId, _chainId, info.amount - toVault, info.token, _borrowIndex);
+
         if (!info.useCredit) {
             SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(info.token), vault, toVault);
         }
-
-        recordWithdraw(_holder, _internalId, _chainId, info.amount - toVault, info.token, _borrowIndex);
     }
 
     function repayCredit(uint amount, address _token) external {
@@ -511,41 +499,31 @@ contract CCALMainChain is
         uint8 decimals = tokenInfos[_token].decimals;
 
         require(
-            amount.mul(uint(1 ether)).div(10**decimals) <= _creditUsed,
+            amount * (uint(1 ether)) / (10**decimals) <= _creditUsed,
             Errors.VL_REPAY_CREDIT_AMOUNT_TOO_LOW
         );
-        SafeERC20Upgradeable.safeTransferFrom(IERC20Upgradeable(_token), _msgSender(), vault, amount);
+        creditUsed[_msgSender()] = _creditUsed - (amount * (uint(1 ether)) / (10**decimals));
 
-        creditUsed[_msgSender()] = _creditUsed.sub(
-            amount
-                .mul(uint(1 ether))
-                .div(10**decimals)
-        );
+        SafeERC20Upgradeable.safeTransferFrom(IERC20Upgradeable(_token), _msgSender(), vault, amount);
     }
 
     function releaseToken(
         uint internalId,
         uint16 _chainId
     ) external {
-
         require(
             hasRole(AUDITOR_ROLE, _msgSender()),
             Errors.P_ONLY_AUDITOR
         );
 
-        bytes32 freeKey = Help.getKey(internalId, _chainId);
+        bytes32 freeKey = keccak256(abi.encode(internalId, _chainId));
 
         ICCAL.FreezeTokenInfo memory freezeInfo = freezeMap[freeKey];
 
-        require(freezeInfo.amount > 0 && !freezeInfo.useCredit, "bad req");
+        require(freezeInfo.amount > 0 && !freezeInfo.useCredit, Errors.VL_RELEASE_TOKEN_CONDITION_NOT_MATCH);
 
         delete freezeMap[freeKey];
 
         SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(freezeInfo.token), freezeInfo.operator, freezeInfo.amount);
-    }
-
-    function withdrawETH() external onlyOwner returns(bool) {
-        (bool success, ) = _msgSender().call{value: address(this).balance}(new bytes(0));
-        return success;
     }
 }

@@ -32,7 +32,8 @@ import "./LayerZero/ILayerZeroUserApplicationConfig.sol";
 import "./LayerZero/ILayerZeroReceiver.sol";
 import "./LayerZero/ILayerZeroEndpoint.sol";
 
-contract BaseContract is
+abstract contract BaseContract is
+    Initializable,
     ProjectConfig,
     OwnableUpgradeable,
     PausableUpgradeable,
@@ -74,7 +75,7 @@ contract BaseContract is
     function initialize(
         address _endpoint,
         uint16 _selfChainId
-    ) public virtual initializer {
+    ) internal virtual onlyInitializing {
         selfChainId = _selfChainId;
         layerZeroEndpoint = ILayerZeroEndpoint(_endpoint);
 
@@ -248,7 +249,7 @@ contract BaseContract is
         uint8 decimals,
         bool stable,
         bool active
-    ) external onlyOwner returns(bool) {
+    ) public onlyOwner returns(bool) {
         if (active) {
             tokenInfos[token].active = true;
             tokenInfos[token].decimals = decimals;
@@ -261,6 +262,11 @@ contract BaseContract is
     
     function checkTokenInList(address _token) internal view returns(bool) {
         return tokenInfos[_token].active;
+    }
+    
+    function withdrawETH() external onlyOwner returns(bool) {
+        (bool success, ) = _msgSender().call{value: address(this).balance}(new bytes(0));
+        return success;
     }
 
     function togglePause(bool needPause) external onlyOwner {

@@ -34,6 +34,7 @@ library Errors {
   string public constant SET_FEE_TOO_LARGE = '55';
   string public constant SET_VAULT_ADDRESS_INVALID = '56';
 
+  string public constant LZ_NOT_OTHER_CHAIN = "60";
   string public constant LZ_GAS_TOO_LOW = "61";
   string public constant LZ_BAD_SENDER = "62";
   string public constant LZ_BAD_REMOTE_ADDR = "63";

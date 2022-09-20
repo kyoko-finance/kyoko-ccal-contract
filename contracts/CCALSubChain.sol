@@ -21,20 +21,21 @@ import "./interface.sol";
 contract CCALSubChain is BaseContract {
     uint16 public mainChainId;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {  
+        _disableInitializers();  
+    }
+
     function initialize(
         address _endpoint,
         uint16 _selfChainId,
         uint16 _mainChainId,
         address _currency,
         uint8 _currencyDecimal
-    ) public initializer {
+    ) external initializer {
         mainChainId = _mainChainId;
-
-        tokenInfos[_currency].active = true;
-        tokenInfos[_currency].decimals = _currencyDecimal;
-        tokenInfos[_currency].stable = true;
-
         BaseContract.initialize(_endpoint, _selfChainId);
+        toggleTokens(_currency, _currencyDecimal, true, true);
     }
 
     event LogRepayAsset(uint indexed internalId, uint interest, uint borrowIndex, uint time);
@@ -43,24 +44,12 @@ contract CCALSubChain is BaseContract {
 
         require(asset.status == ICCAL.AssetStatus.BORROW && asset.borrower == _msgSender(), Errors.VL_REPAY_CONDITION_NOT_MATCH);
 
-        uint len = asset.toolIds.length;
-        for (uint idx; idx < len;) {
-            IERC721Upgradeable(asset.game).safeTransferFrom(_msgSender(), address(this), asset.toolIds[idx]);
-            unchecked {
-                ++idx;
-            }
-        }
-
         uint interest = ValidateLogic.calcCost(
             asset.amountPerDay,
             block.timestamp - asset.borrowTime,
             asset.minPay,
             asset.totalAmount
         );
-
-        asset.borrowTime = 0;
-        asset.borrower = address(0);
-        asset.status = ICCAL.AssetStatus.INITIAL;
 
         bytes memory payload = abi.encode(
             ICCAL.Operation.REPAY,
@@ -81,6 +70,18 @@ contract CCALSubChain is BaseContract {
         (uint messageFee, ) = layerZeroEndpoint.estimateFees(mainChainId, address(this), payload, false, adapterParams);
 
         require(msg.value >= messageFee, Errors.LZ_GAS_TOO_LOW);
+
+        asset.borrowTime = 0;
+        asset.borrower = address(0);
+        asset.status = ICCAL.AssetStatus.INITIAL;
+
+        uint len = asset.toolIds.length;
+        for (uint idx; idx < len;) {
+            IERC721Upgradeable(asset.game).safeTransferFrom(_msgSender(), address(this), asset.toolIds[idx]);
+            unchecked {
+                ++idx;
+            }
+        }
 
         layerZeroEndpoint.send{value: msg.value}(
             mainChainId,                     //  destination chainId
@@ -158,10 +159,10 @@ contract CCALSubChain is BaseContract {
 
         // if tool isn't borrow, depositor can withdraw
         if (asset.status == ICCAL.AssetStatus.INITIAL) {
-            if (msg.value > 0) {
-                (bool success, ) = _msgSender().call{value: msg.value, gas: 30_000}(new bytes(0));
-                require(success, Errors.LZ_BACK_FEE_FAILED);
-            }
+            // if (msg.value > 0) {
+            //     (bool success, ) = _msgSender().call{value: msg.value, gas: 30_000}(new bytes(0));
+            //     require(success, Errors.LZ_BACK_FEE_FAILED);
+            // }
             nftMap[internalId].status = ICCAL.AssetStatus.WITHDRAW;
             
             uint len = asset.toolIds.length;
@@ -184,8 +185,6 @@ contract CCALSubChain is BaseContract {
 
         ICCAL.DepositAsset storage asset = nftMap[internalId];
 
-        asset.status = ICCAL.AssetStatus.LIQUIDATE;
-
         bytes memory payload = abi.encode(
             ICCAL.Operation.LIQUIDATE,
             abi.encode(
@@ -204,6 +203,8 @@ contract CCALSubChain is BaseContract {
         (uint messageFee, ) = layerZeroEndpoint.estimateFees(mainChainId, address(this), payload, false, adapterParams);
 
         require(msg.value >= messageFee, Errors.LZ_GAS_TOO_LOW);
+
+        asset.status = ICCAL.AssetStatus.LIQUIDATE;
 
         layerZeroEndpoint.send{value: msg.value}(
             mainChainId,                     //  destination chainId

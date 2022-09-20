@@ -27,7 +27,8 @@ library ValidateLogic {
     ) public view {
         require(
             IERC721Upgradeable(game).supportsInterface(0x80ac58cd) &&
-            totalAmount > (amountPerDay * 1 days / cycle) + minPay &&
+            totalAmount > (amountPerDay * cycle / 1 days) &&
+            totalAmount > minPay &&
             (cycle > 0 && cycle <= 365 days) &&
             toolIds.length > 0 &&
             amountPerDay > 0 &&
@@ -48,8 +49,8 @@ library ValidateLogic {
     ) external view {
         ICCAL.DepositAsset memory asset = assetMap[internalId];
         require(
-            totalAmount > (amountPerDay * 1 days / cycle) + minPay &&
-            (cycle > 0 && cycle <= 365 days) &&
+            totalAmount > (amountPerDay * cycle / 1 days) &&
+            totalAmount > minPay &&
             amountPerDay > 0 &&
             totalAmount > 0 &&
             minPay > 0,
