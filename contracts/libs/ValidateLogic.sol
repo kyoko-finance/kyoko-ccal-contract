@@ -51,6 +51,7 @@ library ValidateLogic {
         require(
             totalAmount > (amountPerDay * cycle / 1 days) &&
             totalAmount > minPay &&
+            (cycle > 0 && cycle <= 365 days) &&
             amountPerDay > 0 &&
             totalAmount > 0 &&
             minPay > 0,

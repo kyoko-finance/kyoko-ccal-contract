@@ -129,11 +129,11 @@ contract CCALMainChain is
             token: _token
         });
 
+        _borrow(_msgSender(), internalId, _useCredit);
+
         if (!_useCredit) {
             SafeERC20Upgradeable.safeTransferFrom(IERC20Upgradeable(_token), _msgSender(), address(this), amount);
         }
-
-        _borrow(_msgSender(), internalId, _useCredit);
     }
 
     function checkSuitCredit(
@@ -489,6 +489,7 @@ contract CCALMainChain is
         }
     }
 
+    event LogRepayCredit(address user, uint amount, address token);
     function repayCredit(uint amount, address _token) external {
         require(amount > 0, Errors.VL_REPAY_CREDIT_AMOUNT_0);
         require(checkTokenInList(_token), Errors.VL_TOKEN_NOT_SUPPORT);
@@ -505,8 +506,11 @@ contract CCALMainChain is
         creditUsed[_msgSender()] = _creditUsed - (amount * (uint(1 ether)) / (10**decimals));
 
         SafeERC20Upgradeable.safeTransferFrom(IERC20Upgradeable(_token), _msgSender(), vault, amount);
+
+        emit LogRepayCredit(_msgSender(), amount, _token);
     }
 
+    event LogReleaseToken(address user, uint internalId, uint16 chainId);
     function releaseToken(
         uint internalId,
         uint16 _chainId
@@ -525,5 +529,7 @@ contract CCALMainChain is
         delete freezeMap[freeKey];
 
         SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(freezeInfo.token), freezeInfo.operator, freezeInfo.amount);
+
+        emit LogReleaseToken(_msgSender(), internalId, _chainId);
     }
 }

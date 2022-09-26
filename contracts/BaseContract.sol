@@ -244,6 +244,7 @@ abstract contract BaseContract is
         layerZeroEndpoint.forceResumeReceive(_srcChainId, _srcAddress);
     }
 
+    event LogToggleTokens(address token, bool active);
     function toggleTokens(
         address token,
         uint8 decimals,
@@ -257,6 +258,7 @@ abstract contract BaseContract is
             return true;
         }
         delete tokenInfos[token];
+        emit LogToggleTokens(token, active);
         return true;
     }
     
@@ -264,8 +266,10 @@ abstract contract BaseContract is
         return tokenInfos[_token].active;
     }
     
+    event LogWithdrawETH(address user);
     function withdrawETH() external onlyOwner returns(bool) {
         (bool success, ) = _msgSender().call{value: address(this).balance}(new bytes(0));
+        emit LogWithdrawETH(_msgSender());
         return success;
     }
 
