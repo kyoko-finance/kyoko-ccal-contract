@@ -26,9 +26,12 @@
 
 const fs = require('fs');
 const HDWalletProvider = require('@truffle/hdwallet-provider');
-// const mnemonic = fs.readFileSync(".mnemonic").toString().trim();
+const mnemonic = fs.readFileSync(".mnemonic").toString().trim();
 
-const mnemonic = '';
+const etherscanApi = fs.readFileSync(".etherscanApi").toString().trim();
+const bscscanApi = fs.readFileSync(".bscscanApi").toString().trim();
+
+// const mnemonic = '';
 
 module.exports = {
     /**
@@ -138,7 +141,7 @@ module.exports = {
         'truffle-plugin-verify'
     ],
     api_keys: {
-        etherscan: '[etherscanApiKey]',
-        bscscan: '[bscscanApiKey]'
+        etherscan: etherscanApi,
+        bscscan: bscscanApi
     }
 };
